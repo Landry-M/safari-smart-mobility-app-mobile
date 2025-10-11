@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "895377292435",
+    "project_id": "safari-82202",
+    "storage_bucket": "safari-82202.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:895377292435:android:d852918dc7b2aa5ce8a166",
+        "android_client_info": {
+          "package_name": "com.safari.sma"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAKilnQjSbrbYSe1-W878HcFR5brXFB1Ps"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,48 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Collection des utilisateurs
+    match /users/{userId} {
+      // Lecture publique limitée pour vérifier l'existence d'un numéro de téléphone
+      // OU lecture complète si l'utilisateur est authentifié
+      allow read: if request.auth != null ||
+                     (request.query != null && 
+                      request.query.limit == 1);
+      
+      // Création : Utilisateur authentifié créant son propre document
+      allow create: if request.auth != null && 
+                       request.auth.uid == userId;
+      
+      // Mise à jour : Propriétaire uniquement
+      allow update: if request.auth != null && 
+                       request.auth.uid == userId;
+      
+      // Suppression : Propriétaire uniquement
+      allow delete: if request.auth != null && 
+                       request.auth.uid == userId;
+    }
+    
+    // Collection des tickets
+    match /tickets/{ticketId} {
+      // Lecture : Utilisateurs authentifiés
+      allow read: if request.auth != null;
+      
+      // Création : Utilisateurs authentifiés
+      allow create: if request.auth != null;
+      
+      // Mise à jour/Suppression : Propriétaire du ticket uniquement
+      allow update, delete: if request.auth != null && 
+                               resource.data.userId == request.auth.uid;
+    }
+    
+    // Collection des trajets
+    match /trips/{tripId} {
+      // Lecture : Utilisateurs authentifiés
+      allow read: if request.auth != null;
+      
+      // Écriture : Utilisateurs authentifiés (chauffeurs, contrôleurs)
+      allow write: if request.auth != null;
+    }
+  }
+}
