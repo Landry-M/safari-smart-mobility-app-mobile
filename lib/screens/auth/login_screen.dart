@@ -312,13 +312,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 24),
 
-              // Skip Game Option
+              // Driver Login Option
               TextButton(
                 onPressed: () {
-                  // TODO: Implement classic login option
+                  context.push('/driver-auth');
                 },
                 child: Text(
-                  "Connexion chaffeur",
+                  "Connexion chauffeur",
                   style: TextStyle(
                     color: AppColors.textHint,
                     decoration: TextDecoration.underline,

@@ -37,90 +37,100 @@ const TicketSchema = CollectionSchema(
       name: r'destination',
       type: IsarType.string,
     ),
-    r'expiresAt': PropertySchema(
+    r'distance': PropertySchema(
       id: 4,
+      name: r'distance',
+      type: IsarType.double,
+    ),
+    r'expiresAt': PropertySchema(
+      id: 5,
       name: r'expiresAt',
       type: IsarType.dateTime,
     ),
     r'isExpired': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'isExpired',
       type: IsarType.bool,
     ),
     r'isSynced': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'isSynced',
       type: IsarType.bool,
     ),
     r'isValid': PropertySchema(
-      id: 7,
+      id: 8,
       name: r'isValid',
       type: IsarType.bool,
     ),
     r'origin': PropertySchema(
-      id: 8,
+      id: 9,
       name: r'origin',
       type: IsarType.string,
     ),
     r'price': PropertySchema(
-      id: 9,
+      id: 10,
       name: r'price',
       type: IsarType.double,
     ),
     r'qrCode': PropertySchema(
-      id: 10,
+      id: 11,
       name: r'qrCode',
       type: IsarType.string,
     ),
     r'routeId': PropertySchema(
-      id: 11,
+      id: 12,
       name: r'routeId',
       type: IsarType.string,
     ),
     r'routeName': PropertySchema(
-      id: 12,
+      id: 13,
       name: r'routeName',
       type: IsarType.string,
     ),
+    r'seatNumber': PropertySchema(
+      id: 14,
+      name: r'seatNumber',
+      type: IsarType.string,
+    ),
     r'status': PropertySchema(
-      id: 13,
+      id: 15,
       name: r'status',
       type: IsarType.string,
       enumMap: _TicketstatusEnumValueMap,
     ),
     r'ticketId': PropertySchema(
-      id: 14,
+      id: 16,
       name: r'ticketId',
       type: IsarType.string,
     ),
     r'tripId': PropertySchema(
-      id: 15,
+      id: 17,
       name: r'tripId',
       type: IsarType.string,
     ),
     r'type': PropertySchema(
-      id: 16,
+      id: 18,
       name: r'type',
       type: IsarType.string,
       enumMap: _TickettypeEnumValueMap,
     ),
     r'updatedAt': PropertySchema(
-      id: 17,
+      id: 19,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
     r'userId': PropertySchema(
-      id: 18,
+      id: 20,
       name: r'userId',
       type: IsarType.string,
     ),
     r'validatedAt': PropertySchema(
-      id: 19,
+      id: 21,
       name: r'validatedAt',
       type: IsarType.dateTime,
     ),
     r'validatedBy': PropertySchema(
-      id: 20,
+      id: 22,
       name: r'validatedBy',
       type: IsarType.string,
     )
@@ -191,6 +201,12 @@ int _ticketEstimateSize(
       bytesCount += 3 + value.length * 3;
     }
   }
+  {
+    final value = object.seatNumber;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.status.name.length * 3;
   bytesCount += 3 + object.ticketId.length * 3;
   {
@@ -220,23 +236,25 @@ void _ticketSerialize(
   writer.writeDateTime(offsets[1], object.createdAt);
   writer.writeString(offsets[2], object.currency);
   writer.writeString(offsets[3], object.destination);
-  writer.writeDateTime(offsets[4], object.expiresAt);
-  writer.writeBool(offsets[5], object.isExpired);
-  writer.writeBool(offsets[6], object.isSynced);
-  writer.writeBool(offsets[7], object.isValid);
-  writer.writeString(offsets[8], object.origin);
-  writer.writeDouble(offsets[9], object.price);
-  writer.writeString(offsets[10], object.qrCode);
-  writer.writeString(offsets[11], object.routeId);
-  writer.writeString(offsets[12], object.routeName);
-  writer.writeString(offsets[13], object.status.name);
-  writer.writeString(offsets[14], object.ticketId);
-  writer.writeString(offsets[15], object.tripId);
-  writer.writeString(offsets[16], object.type.name);
-  writer.writeDateTime(offsets[17], object.updatedAt);
-  writer.writeString(offsets[18], object.userId);
-  writer.writeDateTime(offsets[19], object.validatedAt);
-  writer.writeString(offsets[20], object.validatedBy);
+  writer.writeDouble(offsets[4], object.distance);
+  writer.writeDateTime(offsets[5], object.expiresAt);
+  writer.writeBool(offsets[6], object.isExpired);
+  writer.writeBool(offsets[7], object.isSynced);
+  writer.writeBool(offsets[8], object.isValid);
+  writer.writeString(offsets[9], object.origin);
+  writer.writeDouble(offsets[10], object.price);
+  writer.writeString(offsets[11], object.qrCode);
+  writer.writeString(offsets[12], object.routeId);
+  writer.writeString(offsets[13], object.routeName);
+  writer.writeString(offsets[14], object.seatNumber);
+  writer.writeString(offsets[15], object.status.name);
+  writer.writeString(offsets[16], object.ticketId);
+  writer.writeString(offsets[17], object.tripId);
+  writer.writeString(offsets[18], object.type.name);
+  writer.writeDateTime(offsets[19], object.updatedAt);
+  writer.writeString(offsets[20], object.userId);
+  writer.writeDateTime(offsets[21], object.validatedAt);
+  writer.writeString(offsets[22], object.validatedBy);
 }
 
 Ticket _ticketDeserialize(
@@ -249,26 +267,28 @@ Ticket _ticketDeserialize(
     busId: reader.readStringOrNull(offsets[0]),
     currency: reader.readStringOrNull(offsets[2]) ?? 'XOF',
     destination: reader.readStringOrNull(offsets[3]),
-    expiresAt: reader.readDateTimeOrNull(offsets[4]),
-    isSynced: reader.readBoolOrNull(offsets[6]) ?? false,
-    origin: reader.readStringOrNull(offsets[8]),
-    price: reader.readDoubleOrNull(offsets[9]) ?? 0.0,
-    qrCode: reader.readStringOrNull(offsets[10]) ?? '',
-    routeId: reader.readStringOrNull(offsets[11]),
-    routeName: reader.readStringOrNull(offsets[12]),
-    status: _TicketstatusValueEnumMap[reader.readStringOrNull(offsets[13])] ??
+    distance: reader.readDoubleOrNull(offsets[4]),
+    expiresAt: reader.readDateTimeOrNull(offsets[5]),
+    isSynced: reader.readBoolOrNull(offsets[7]) ?? false,
+    origin: reader.readStringOrNull(offsets[9]),
+    price: reader.readDoubleOrNull(offsets[10]) ?? 0.0,
+    qrCode: reader.readStringOrNull(offsets[11]) ?? '',
+    routeId: reader.readStringOrNull(offsets[12]),
+    routeName: reader.readStringOrNull(offsets[13]),
+    seatNumber: reader.readStringOrNull(offsets[14]),
+    status: _TicketstatusValueEnumMap[reader.readStringOrNull(offsets[15])] ??
         TicketStatus.pending,
-    ticketId: reader.readStringOrNull(offsets[14]) ?? '',
-    tripId: reader.readStringOrNull(offsets[15]),
-    type: _TickettypeValueEnumMap[reader.readStringOrNull(offsets[16])] ??
+    ticketId: reader.readStringOrNull(offsets[16]) ?? '',
+    tripId: reader.readStringOrNull(offsets[17]),
+    type: _TickettypeValueEnumMap[reader.readStringOrNull(offsets[18])] ??
         TicketType.single,
-    userId: reader.readStringOrNull(offsets[18]) ?? '',
-    validatedAt: reader.readDateTimeOrNull(offsets[19]),
-    validatedBy: reader.readStringOrNull(offsets[20]),
+    userId: reader.readStringOrNull(offsets[20]) ?? '',
+    validatedAt: reader.readDateTimeOrNull(offsets[21]),
+    validatedBy: reader.readStringOrNull(offsets[22]),
   );
   object.createdAt = reader.readDateTime(offsets[1]);
   object.id = id;
-  object.updatedAt = reader.readDateTime(offsets[17]);
+  object.updatedAt = reader.readDateTime(offsets[19]);
   return object;
 }
 
@@ -288,40 +308,44 @@ P _ticketDeserializeProp<P>(
     case 3:
       return (reader.readStringOrNull(offset)) as P;
     case 4:
-      return (reader.readDateTimeOrNull(offset)) as P;
+      return (reader.readDoubleOrNull(offset)) as P;
     case 5:
-      return (reader.readBool(offset)) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 6:
-      return (reader.readBoolOrNull(offset) ?? false) as P;
-    case 7:
       return (reader.readBool(offset)) as P;
+    case 7:
+      return (reader.readBoolOrNull(offset) ?? false) as P;
     case 8:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 9:
-      return (reader.readDoubleOrNull(offset) ?? 0.0) as P;
-    case 10:
-      return (reader.readStringOrNull(offset) ?? '') as P;
-    case 11:
       return (reader.readStringOrNull(offset)) as P;
+    case 10:
+      return (reader.readDoubleOrNull(offset) ?? 0.0) as P;
+    case 11:
+      return (reader.readStringOrNull(offset) ?? '') as P;
     case 12:
       return (reader.readStringOrNull(offset)) as P;
     case 13:
+      return (reader.readStringOrNull(offset)) as P;
+    case 14:
+      return (reader.readStringOrNull(offset)) as P;
+    case 15:
       return (_TicketstatusValueEnumMap[reader.readStringOrNull(offset)] ??
           TicketStatus.pending) as P;
-    case 14:
-      return (reader.readStringOrNull(offset) ?? '') as P;
-    case 15:
-      return (reader.readStringOrNull(offset)) as P;
     case 16:
+      return (reader.readStringOrNull(offset) ?? '') as P;
+    case 17:
+      return (reader.readStringOrNull(offset)) as P;
+    case 18:
       return (_TickettypeValueEnumMap[reader.readStringOrNull(offset)] ??
           TicketType.single) as P;
-    case 17:
-      return (reader.readDateTime(offset)) as P;
-    case 18:
-      return (reader.readStringOrNull(offset) ?? '') as P;
     case 19:
-      return (reader.readDateTimeOrNull(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 20:
+      return (reader.readStringOrNull(offset) ?? '') as P;
+    case 21:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 22:
       return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -963,6 +987,84 @@ extension TicketQueryFilter on QueryBuilder<Ticket, Ticket, QFilterCondition> {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'destination',
         value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Ticket, Ticket, QAfterFilterCondition> distanceIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'distance',
+      ));
+    });
+  }
+
+  QueryBuilder<Ticket, Ticket, QAfterFilterCondition> distanceIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'distance',
+      ));
+    });
+  }
+
+  QueryBuilder<Ticket, Ticket, QAfterFilterCondition> distanceEqualTo(
+    double? value, {
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'distance',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Ticket, Ticket, QAfterFilterCondition> distanceGreaterThan(
+    double? value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'distance',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Ticket, Ticket, QAfterFilterCondition> distanceLessThan(
+    double? value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'distance',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Ticket, Ticket, QAfterFilterCondition> distanceBetween(
+    double? lower,
+    double? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'distance',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        epsilon: epsilon,
       ));
     });
   }
@@ -1743,6 +1845,152 @@ extension TicketQueryFilter on QueryBuilder<Ticket, Ticket, QFilterCondition> {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'routeName',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Ticket, Ticket, QAfterFilterCondition> seatNumberIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'seatNumber',
+      ));
+    });
+  }
+
+  QueryBuilder<Ticket, Ticket, QAfterFilterCondition> seatNumberIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'seatNumber',
+      ));
+    });
+  }
+
+  QueryBuilder<Ticket, Ticket, QAfterFilterCondition> seatNumberEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'seatNumber',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Ticket, Ticket, QAfterFilterCondition> seatNumberGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'seatNumber',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Ticket, Ticket, QAfterFilterCondition> seatNumberLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'seatNumber',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Ticket, Ticket, QAfterFilterCondition> seatNumberBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'seatNumber',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Ticket, Ticket, QAfterFilterCondition> seatNumberStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'seatNumber',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Ticket, Ticket, QAfterFilterCondition> seatNumberEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'seatNumber',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Ticket, Ticket, QAfterFilterCondition> seatNumberContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'seatNumber',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Ticket, Ticket, QAfterFilterCondition> seatNumberMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'seatNumber',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Ticket, Ticket, QAfterFilterCondition> seatNumberIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'seatNumber',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Ticket, Ticket, QAfterFilterCondition> seatNumberIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'seatNumber',
         value: '',
       ));
     });
@@ -2735,6 +2983,18 @@ extension TicketQuerySortBy on QueryBuilder<Ticket, Ticket, QSortBy> {
     });
   }
 
+  QueryBuilder<Ticket, Ticket, QAfterSortBy> sortByDistance() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'distance', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Ticket, Ticket, QAfterSortBy> sortByDistanceDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'distance', Sort.desc);
+    });
+  }
+
   QueryBuilder<Ticket, Ticket, QAfterSortBy> sortByExpiresAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'expiresAt', Sort.asc);
@@ -2840,6 +3100,18 @@ extension TicketQuerySortBy on QueryBuilder<Ticket, Ticket, QSortBy> {
   QueryBuilder<Ticket, Ticket, QAfterSortBy> sortByRouteNameDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'routeName', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Ticket, Ticket, QAfterSortBy> sortBySeatNumber() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'seatNumber', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Ticket, Ticket, QAfterSortBy> sortBySeatNumberDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'seatNumber', Sort.desc);
     });
   }
 
@@ -2989,6 +3261,18 @@ extension TicketQuerySortThenBy on QueryBuilder<Ticket, Ticket, QSortThenBy> {
     });
   }
 
+  QueryBuilder<Ticket, Ticket, QAfterSortBy> thenByDistance() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'distance', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Ticket, Ticket, QAfterSortBy> thenByDistanceDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'distance', Sort.desc);
+    });
+  }
+
   QueryBuilder<Ticket, Ticket, QAfterSortBy> thenByExpiresAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'expiresAt', Sort.asc);
@@ -3106,6 +3390,18 @@ extension TicketQuerySortThenBy on QueryBuilder<Ticket, Ticket, QSortThenBy> {
   QueryBuilder<Ticket, Ticket, QAfterSortBy> thenByRouteNameDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'routeName', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Ticket, Ticket, QAfterSortBy> thenBySeatNumber() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'seatNumber', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Ticket, Ticket, QAfterSortBy> thenBySeatNumberDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'seatNumber', Sort.desc);
     });
   }
 
@@ -3234,6 +3530,12 @@ extension TicketQueryWhereDistinct on QueryBuilder<Ticket, Ticket, QDistinct> {
     });
   }
 
+  QueryBuilder<Ticket, Ticket, QDistinct> distinctByDistance() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'distance');
+    });
+  }
+
   QueryBuilder<Ticket, Ticket, QDistinct> distinctByExpiresAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'expiresAt');
@@ -3289,6 +3591,13 @@ extension TicketQueryWhereDistinct on QueryBuilder<Ticket, Ticket, QDistinct> {
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'routeName', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Ticket, Ticket, QDistinct> distinctBySeatNumber(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'seatNumber', caseSensitive: caseSensitive);
     });
   }
 
@@ -3378,6 +3687,12 @@ extension TicketQueryProperty on QueryBuilder<Ticket, Ticket, QQueryProperty> {
     });
   }
 
+  QueryBuilder<Ticket, double?, QQueryOperations> distanceProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'distance');
+    });
+  }
+
   QueryBuilder<Ticket, DateTime?, QQueryOperations> expiresAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'expiresAt');
@@ -3429,6 +3744,12 @@ extension TicketQueryProperty on QueryBuilder<Ticket, Ticket, QQueryProperty> {
   QueryBuilder<Ticket, String?, QQueryOperations> routeNameProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'routeName');
+    });
+  }
+
+  QueryBuilder<Ticket, String?, QQueryOperations> seatNumberProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'seatNumber');
     });
   }
 

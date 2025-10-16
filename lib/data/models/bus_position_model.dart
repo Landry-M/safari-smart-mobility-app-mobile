@@ -9,6 +9,11 @@ class BusPosition {
   @Index()
   late String busId;
   
+  // Bus information
+  late String? immatriculation;
+  late String? marque;
+  late String? modele;
+  
   late double latitude;
   late double longitude;
   late double? altitude;
@@ -40,6 +45,9 @@ class BusPosition {
   
   BusPosition({
     this.busId = '',
+    this.immatriculation,
+    this.marque,
+    this.modele,
     this.latitude = 0.0,
     this.longitude = 0.0,
     this.altitude,
@@ -62,6 +70,9 @@ class BusPosition {
   Map<String, dynamic> toJson() {
     return {
       'busId': busId,
+      'immatriculation': immatriculation,
+      'marque': marque,
+      'modele': modele,
       'latitude': latitude,
       'longitude': longitude,
       'altitude': altitude,
@@ -86,6 +97,9 @@ class BusPosition {
   factory BusPosition.fromJson(Map<String, dynamic> json) {
     final position = BusPosition(
       busId: json['busId'] ?? '',
+      immatriculation: json['immatriculation'],
+      marque: json['marque'],
+      modele: json['modele'],
       latitude: (json['latitude'] ?? 0.0).toDouble(),
       longitude: (json['longitude'] ?? 0.0).toDouble(),
       altitude: json['altitude']?.toDouble(),
@@ -130,6 +144,9 @@ class BusPosition {
   
   BusPosition copyWith({
     String? busId,
+    String? immatriculation,
+    String? marque,
+    String? modele,
     double? latitude,
     double? longitude,
     double? altitude,
@@ -149,6 +166,9 @@ class BusPosition {
   }) {
     final newPosition = BusPosition(
       busId: busId ?? this.busId,
+      immatriculation: immatriculation ?? this.immatriculation,
+      marque: marque ?? this.marque,
+      modele: modele ?? this.modele,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       altitude: altitude ?? this.altitude,

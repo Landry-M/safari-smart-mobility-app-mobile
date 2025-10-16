@@ -27,6 +27,8 @@ class Ticket {
   late String? routeName;
   late String? origin;
   late String? destination;
+  late double? distance; // Distance du trajet en km
+  late String? seatNumber;
   
   // Validation information
   late DateTime? validatedAt;
@@ -55,6 +57,8 @@ class Ticket {
     this.routeName,
     this.origin,
     this.destination,
+    this.distance,
+    this.seatNumber,
     this.validatedAt,
     this.validatedBy,
     this.busId,
@@ -78,6 +82,8 @@ class Ticket {
       'routeName': routeName,
       'origin': origin,
       'destination': destination,
+      'distance': distance,
+      'seatNumber': seatNumber,
       'validatedAt': validatedAt?.toIso8601String(),
       'validatedBy': validatedBy,
       'busId': busId,
@@ -109,6 +115,8 @@ class Ticket {
       routeName: json['routeName'],
       origin: json['origin'],
       destination: json['destination'],
+      distance: json['distance'] != null ? (json['distance'] as num).toDouble() : null,
+      seatNumber: json['seatNumber'],
       validatedAt: json['validatedAt'] != null
           ? DateTime.parse(json['validatedAt'])
           : null,
@@ -155,6 +163,8 @@ class Ticket {
     String? routeName,
     String? origin,
     String? destination,
+    double? distance,
+    String? seatNumber,
     DateTime? validatedAt,
     String? validatedBy,
     String? busId,
@@ -175,6 +185,8 @@ class Ticket {
       routeName: routeName ?? this.routeName,
       origin: origin ?? this.origin,
       destination: destination ?? this.destination,
+      distance: distance ?? this.distance,
+      seatNumber: seatNumber ?? this.seatNumber,
       validatedAt: validatedAt ?? this.validatedAt,
       validatedBy: validatedBy ?? this.validatedBy,
       busId: busId ?? this.busId,

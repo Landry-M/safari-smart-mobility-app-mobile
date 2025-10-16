@@ -6,6 +6,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/utils/currency_helper.dart';
 import '../../core/services/database_service.dart';
+import '../../core/services/api_service.dart';
 import '../../data/models/ticket_model.dart';
 import '../../data/models/transaction_model.dart';
 import '../../providers/auth_provider.dart';
@@ -21,8 +22,12 @@ class TicketPurchaseScreen extends StatefulWidget {
 class _TicketPurchaseScreenState extends State<TicketPurchaseScreen> {
   TicketType _selectedTicketType = TicketType.single;
   PaymentMethod _selectedPaymentMethod = PaymentMethod.cash;
-  String? _selectedRoute;
+  Map<String, dynamic>? _selectedRoute;
   bool _isLoading = false;
+  DateTime? _lastBackPressTime;
+  List<Map<String, dynamic>> _lignesFromApi = [];
+  bool _isLoadingLignes = true;
+  final ApiService _apiService = ApiService();
 
   final Map<TicketType, Map<String, dynamic>> _ticketPrices = {
     TicketType.single: {'price': 200, 'name': 'Billet simple'},
@@ -42,12 +47,72 @@ class _TicketPurchaseScreenState extends State<TicketPurchaseScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _loadLignes();
+  }
+
+  Future<void> _loadLignes() async {
+    try {
+      final lignes = await _apiService.getLignes();
+      setState(() {
+        _lignesFromApi = lignes;
+        _isLoadingLignes = false;
+      });
+    } catch (e) {
+      print('Erreur lors du chargement des lignes: $e');
+      setState(() {
+        _isLoadingLignes = false;
+      });
+    }
+  }
+
+  List<Map<String, dynamic>> get _routesToDisplay {
+    if (_lignesFromApi.isNotEmpty) {
+      return _lignesFromApi;
+    }
+    // Convertir les routes en dur en format Map
+    return _availableRoutes.map((route) => {
+      'nom': route,
+      'distance_totale': null,
+    }).toList();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text(AppStrings.buyTicket),
-        backgroundColor: AppColors.primaryPurple,
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        
+        final now = DateTime.now();
+        final backButtonHasNotBeenPressedOrSnackBarHasBeenClosed =
+            _lastBackPressTime == null ||
+                now.difference(_lastBackPressTime!) > const Duration(seconds: 2);
+
+        if (backButtonHasNotBeenPressedOrSnackBarHasBeenClosed) {
+          _lastBackPressTime = now;
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Appuyez à nouveau pour quitter'),
+                duration: Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+          return;
+        }
+
+        if (context.mounted) {
+          context.pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          title: const Text(AppStrings.buyTicket),
+          backgroundColor: AppColors.primaryPurple,
         foregroundColor: AppColors.white,
         elevation: 0,
         leading: IconButton(
@@ -159,7 +224,7 @@ class _TicketPurchaseScreenState extends State<TicketPurchaseScreen> {
                     border: Border.all(color: AppColors.grey),
                   ),
                   child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
+                    child: DropdownButton<Map<String, dynamic>>(
                       value: _selectedRoute,
                       hint: const Text('Choisir une ligne',
                           style: TextStyle(color: AppColors.black)),
@@ -167,12 +232,21 @@ class _TicketPurchaseScreenState extends State<TicketPurchaseScreen> {
                       dropdownColor: AppColors.white,
                       style:
                           const TextStyle(color: AppColors.black, fontSize: 14),
-                      items: _availableRoutes.map((route) {
-                        return DropdownMenuItem(
-                          value: route,
-                          child: Text(route),
-                        );
-                      }).toList(),
+                      items: _isLoadingLignes
+                          ? []
+                          : _routesToDisplay.map((route) {
+                              final distance = route['distance_totale'];
+                              final distanceText = distance != null 
+                                  ? ' (${double.parse(distance.toString()).toStringAsFixed(0)} km)'
+                                  : '';
+                              return DropdownMenuItem(
+                                value: route,
+                                child: Text(
+                                  '${route['nom']}$distanceText',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              );
+                            }).toList(),
                       onChanged: (value) {
                         setState(() {
                           _selectedRoute = value;
@@ -352,7 +426,10 @@ class _TicketPurchaseScreenState extends State<TicketPurchaseScreen> {
                       ),
                       const SizedBox(height: 12),
                       _buildSummaryRow('Ligne',
-                          _selectedRoute ?? 'Non sélectionnée', user?.currency),
+                          _selectedRoute != null 
+                              ? '${_selectedRoute!['nom']}${_selectedRoute!['distance_totale'] != null ? ' (${double.parse(_selectedRoute!['distance_totale'].toString()).toStringAsFixed(0)} km)' : ''}'
+                              : 'Non sélectionnée', 
+                          user?.currency),
                       _buildSummaryRow(
                           'Type',
                           _ticketPrices[_selectedTicketType]!['name'],
@@ -433,6 +510,7 @@ class _TicketPurchaseScreenState extends State<TicketPurchaseScreen> {
           );
         },
       ),
+    ),
     );
   }
 
@@ -632,9 +710,13 @@ class _TicketPurchaseScreenState extends State<TicketPurchaseScreen> {
       final ticketPrice = _ticketPrices[_selectedTicketType]!['price'].toDouble();
 
       // Parse route to get origin and destination
-      final routeParts = _selectedRoute?.split(' - ');
+      final routeName = _selectedRoute?['nom'] as String?;
+      final routeParts = routeName?.split(' - ');
       final origin = routeParts?.first;
       final destination = routeParts?.length == 2 ? routeParts?.last : null;
+      
+      // Get distance from route
+      final distance = _selectedRoute?['distance_totale'];
 
       // Create Ticket object
       final ticket = Ticket(
@@ -645,9 +727,10 @@ class _TicketPurchaseScreenState extends State<TicketPurchaseScreen> {
         type: _selectedTicketType,
         price: ticketPrice,
         currency: user.currency,
-        routeName: _selectedRoute,
+        routeName: routeName,
         origin: origin,
         destination: destination,
+        distance: distance != null ? double.tryParse(distance.toString()) : null,
         expiresAt: expiresAt,
         isSynced: false,
       );
@@ -662,7 +745,7 @@ class _TicketPurchaseScreenState extends State<TicketPurchaseScreen> {
         currency: user.currency,
         paymentMethod: _selectedPaymentMethod,
         ticketId: ticketNumber,
-        description: 'Achat de billet ${_ticketPrices[_selectedTicketType]!['name']} - $_selectedRoute',
+        description: 'Achat de billet ${_ticketPrices[_selectedTicketType]!['name']} - $routeName',
         isSynced: false,
       );
 
@@ -670,10 +753,11 @@ class _TicketPurchaseScreenState extends State<TicketPurchaseScreen> {
       await dbService.saveTicket(ticket);
       await dbService.saveTransaction(transaction);
 
-      // Prepare ticket data for confirmation screen
+      // Prepare ticket data for seat selection screen
       final ticketData = {
         'ticketNumber': ticketNumber,
-        'route': _selectedRoute,
+        'route': routeName,
+        'distance': distance != null ? double.tryParse(distance.toString()) : null,
         'ticketType': _ticketPrices[_selectedTicketType]!['name'],
         'paymentMethod': _getPaymentMethodName(_selectedPaymentMethod),
         'amount': CurrencyHelper.convertAndFormat(
@@ -682,13 +766,20 @@ class _TicketPurchaseScreenState extends State<TicketPurchaseScreen> {
         ),
         'purchaseDate': now.toString().substring(0, 16),
         'validUntil': validUntil,
-        'userId': user.id,
+        'userId': user.userId,
         'userName': user.name,
         'qrCode': qrCode,
+        'origin': origin,
+        'destination': destination,
+        'price': ticketPrice,
+        'currency': user.currency,
+        'ticketTypeEnum': _selectedTicketType.name,
+        'expiresAt': expiresAt?.toIso8601String(),
       };
 
       if (mounted) {
-        context.go('/ticket-confirmation', extra: ticketData);
+        // Naviguer vers l'écran de sélection de siège
+        context.push('/seat-selection', extra: ticketData);
       }
     } catch (e) {
       if (mounted) {

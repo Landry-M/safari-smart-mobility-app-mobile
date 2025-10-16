@@ -29,6 +29,7 @@ class _BusTicketOrderScreenState extends State<BusTicketOrderScreen> {
   TicketType _selectedTicketType = TicketType.single;
   PaymentMethod _selectedPaymentMethod = PaymentMethod.prepaidCard;
   bool _isLoading = false;
+  DateTime? _lastBackPressTime;
 
   final Map<TicketType, Map<String, dynamic>> _ticketPrices = {
     TicketType.single: {'price': 200, 'name': 'Billet simple'},
@@ -40,14 +41,42 @@ class _BusTicketOrderScreenState extends State<BusTicketOrderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Récapitulatif de commande'),
-        backgroundColor: AppColors.primaryPurple,
-        foregroundColor: AppColors.white,
-        elevation: 0,
-        leading: IconButton(
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        
+        final now = DateTime.now();
+        final backButtonHasNotBeenPressedOrSnackBarHasBeenClosed =
+            _lastBackPressTime == null ||
+                now.difference(_lastBackPressTime!) > const Duration(seconds: 2);
+
+        if (backButtonHasNotBeenPressedOrSnackBarHasBeenClosed) {
+          _lastBackPressTime = now;
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Appuyez à nouveau pour quitter'),
+                duration: Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+          return;
+        }
+
+        if (context.mounted) {
+          Navigator.pop(context);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          title: const Text('Récapitulatif de commande'),
+          backgroundColor: AppColors.primaryPurple,
+          foregroundColor: AppColors.white,
+          elevation: 0,
+          leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
@@ -464,6 +493,7 @@ class _BusTicketOrderScreenState extends State<BusTicketOrderScreen> {
           );
         },
       ),
+    ),
     );
   }
 
@@ -719,7 +749,7 @@ class _BusTicketOrderScreenState extends State<BusTicketOrderScreen> {
       await dbService.saveTicket(ticket);
       await dbService.saveTransaction(transaction);
 
-      // Prepare ticket data for confirmation screen
+      // Prepare ticket data for seat selection screen
       final ticketData = {
         'ticketNumber': ticketNumber,
         'busId': widget.bus.busId,
@@ -733,13 +763,20 @@ class _BusTicketOrderScreenState extends State<BusTicketOrderScreen> {
         ),
         'purchaseDate': now.toString().substring(0, 16),
         'validUntil': validUntil,
-        'userId': user.id,
+        'userId': user.userId,
         'userName': user.name,
         'qrCode': qrCode,
+        'origin': widget.bus.routeName?.split(' - ').first,
+        'destination': widget.bus.direction,
+        'price': ticketPrice,
+        'currency': user.currency,
+        'ticketTypeEnum': _selectedTicketType.name,
+        'expiresAt': expiresAt.toIso8601String(),
       };
 
       if (mounted) {
-        context.go('/ticket-confirmation', extra: ticketData);
+        // Naviguer vers l'écran de sélection de siège
+        context.push('/seat-selection', extra: ticketData);
       }
     } catch (e) {
       if (mounted) {

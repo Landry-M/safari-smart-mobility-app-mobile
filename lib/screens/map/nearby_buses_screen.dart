@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/currency_helper.dart';
+import '../../core/services/api_service.dart';
 import '../../data/models/bus_position_model.dart';
 import '../../data/models/user_model.dart';
 import '../../providers/auth_provider.dart';
@@ -26,18 +27,308 @@ enum MapStyle {
 
 class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
   final MapController _mapController = MapController();
+  final ApiService _apiService = ApiService();
   LatLng? _userLocation;
   bool _isLoadingLocation = true;
+  bool _isLoadingTrajets = true;
+  bool _isLoadingBuses = false;
   List<BusPosition> _nearbyBuses = [];
+  List<BusPosition> _filteredBuses = [];
   BusPosition? _selectedBus;
   MapStyle _mapStyle = MapStyle.standard;
 
-  final double _maxRadiusKm = 20.0;
+  // Dropdown data
+  List<Map<String, dynamic>> _trajetsFromApi = [];
+  Map<String, dynamic>? _selectedTrajet;
+
+  // Trajet coordinates
+  LatLng? _trajetDepart;
+  LatLng? _trajetArrivee;
+  List<LatLng> _trajetPolyline = [];
+
+  // Rayon urbain: 5 km, Inter-urbain: 30 km
+  double _maxRadiusKm = 5.0;
+  bool _isUrbanMode = true;
 
   @override
   void initState() {
     super.initState();
     _initializeLocation();
+    _loadTrajets();
+    _loadAllNearbyBuses();
+  }
+
+  Future<void> _loadTrajets() async {
+    try {
+      final trajets = await _apiService.getLignes();
+      setState(() {
+        _trajetsFromApi = trajets;
+        _isLoadingTrajets = false;
+      });
+    } catch (e) {
+      print('Erreur lors du chargement des trajets: $e');
+      setState(() {
+        _isLoadingTrajets = false;
+      });
+    }
+  }
+
+  Future<void> _loadBusByTrajet(String trajetId) async {
+    setState(() {
+      _isLoadingBuses = true;
+    });
+
+    try {
+      final busData = await _apiService.getBusByLigne(trajetId);
+
+      // Convertir les données de l'API en BusPosition pour l'affichage sur la carte
+      _convertApiBusToBusPositions(busData);
+
+      setState(() {
+        _isLoadingBuses = false;
+      });
+    } catch (e) {
+      print('Erreur lors du chargement des bus: $e');
+      setState(() {
+        _isLoadingBuses = false;
+      });
+    }
+  }
+
+  Future<void> _loadAllNearbyBuses() async {
+    try {
+      final busData = await _apiService.getAllNearbyBuses();
+
+      // Attendre que la position de l'utilisateur soit disponible
+      int attempts = 0;
+      while (_userLocation == null && attempts < 50) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        attempts++;
+      }
+
+      if (_userLocation == null) {
+        print('Position utilisateur non disponible');
+        return;
+      }
+
+      // Filtrer les bus dans un rayon de 30 km
+      final List<BusPosition> positions = [];
+
+      for (var bus in busData) {
+        if (bus['latitude'] != null && bus['longitude'] != null) {
+          final busLat = double.tryParse(bus['latitude'].toString()) ?? 0.0;
+          final busLng = double.tryParse(bus['longitude'].toString()) ?? 0.0;
+
+          // Calculer la distance entre l'utilisateur et le bus
+          final distance = _calculateDistance(
+            _userLocation!.latitude,
+            _userLocation!.longitude,
+            busLat,
+            busLng,
+          );
+
+          // Ne garder que les bus dans un rayon de 30 km
+          if (distance <= 30.0) {
+            // Trouver le nom de la ligne depuis trajets
+            String? routeName;
+            if (bus['ligne_affectee'] != null) {
+              final trajet = _trajetsFromApi.firstWhere(
+                (t) => t['id'].toString() == bus['ligne_affectee'].toString(),
+                orElse: () => {},
+              );
+              routeName = trajet['nom'];
+            }
+
+            positions.add(BusPosition(
+              busId: bus['numero']?.toString() ?? 'N/A',
+              immatriculation: bus['immatriculation']?.toString(),
+              marque: bus['marque']?.toString(),
+              modele: bus['modele']?.toString(),
+              latitude: busLat,
+              longitude: busLng,
+              routeName: routeName ?? 'Non défini',
+              direction: bus['notes'] ?? '',
+              status: _convertStatut(bus['statut']),
+              occupancy: 0,
+              capacity: int.tryParse(bus['capacite']?.toString() ?? '40') ?? 40,
+              speed: 35.0 +
+                  (double.tryParse(bus['id']?.toString() ?? '0') ?? 0) % 20,
+            ));
+          }
+        }
+      }
+
+      setState(() {
+        _nearbyBuses = positions;
+        _filteredBuses = List.from(positions);
+      });
+    } catch (e) {
+      print('Erreur lors du chargement des bus à proximité: $e');
+    }
+  }
+
+  void _convertApiBusToBusPositions(List<Map<String, dynamic>> busData) {
+    final List<BusPosition> positions = [];
+
+    for (var bus in busData) {
+      // Ne garder que les bus avec coordonnées GPS
+      if (bus['latitude'] != null && bus['longitude'] != null) {
+        positions.add(BusPosition(
+          busId: bus['numero']?.toString() ?? 'N/A',
+          immatriculation: bus['immatriculation']?.toString(),
+          marque: bus['marque']?.toString(),
+          modele: bus['modele']?.toString(),
+          latitude: double.tryParse(bus['latitude'].toString()) ?? 0.0,
+          longitude: double.tryParse(bus['longitude'].toString()) ?? 0.0,
+          routeName: _selectedTrajet?['nom'] ?? 'Non défini',
+          direction: bus['notes'] ?? '',
+          status: _convertStatut(bus['statut']),
+          occupancy: 0, // Pas de données d'occupation dans la BDD
+          capacity: int.tryParse(bus['capacite']?.toString() ?? '40') ?? 40,
+          speed: 35.0 +
+              (double.tryParse(bus['id']?.toString() ?? '0') ?? 0) %
+                  20, // Données de test : vitesse entre 35-55 km/h
+        ));
+      }
+    }
+
+    setState(() {
+      _nearbyBuses = positions;
+      _filteredBuses = List.from(positions);
+    });
+  }
+
+  BusStatus _convertStatut(String? statut) {
+    switch (statut) {
+      case 'actif':
+        return BusStatus.active;
+      case 'maintenance':
+        return BusStatus.maintenance;
+      case 'panne':
+        return BusStatus.breakdown;
+      default:
+        return BusStatus.inactive;
+    }
+  }
+
+  void _toggleUrbanMode() {
+    setState(() {
+      _isUrbanMode = !_isUrbanMode;
+      _maxRadiusKm = _isUrbanMode ? 5.0 : 30.0;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_isUrbanMode
+            ? 'Mode urbain: Rayon 5 km'
+            : 'Mode inter-urbain: Rayon 30 km'),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _updateTrajetCoordinates(Map<String, dynamic>? trajet) {
+    if (trajet == null) {
+      _trajetDepart = null;
+      _trajetArrivee = null;
+      _trajetPolyline = [];
+      return;
+    }
+
+    // Extraire les coordonnées de départ et d'arrivée
+    final latDepart = trajet['latitude_depart'];
+    final lonDepart = trajet['longitude_depart'];
+    final latArrivee = trajet['latitude_arrivee'];
+    final lonArrivee = trajet['longitude_arrivee'];
+
+    if (latDepart != null &&
+        lonDepart != null &&
+        latArrivee != null &&
+        lonArrivee != null) {
+      _trajetDepart = LatLng(
+        double.parse(latDepart.toString()),
+        double.parse(lonDepart.toString()),
+      );
+      _trajetArrivee = LatLng(
+        double.parse(latArrivee.toString()),
+        double.parse(lonArrivee.toString()),
+      );
+
+      // Créer une polyline simple entre les deux points
+      // Pour un itinéraire réel, vous pourriez utiliser une API de routage
+      _trajetPolyline = [_trajetDepart!, _trajetArrivee!];
+
+      // Ajuster la carte pour afficher tout l'itinéraire
+      _fitMapToTrajet();
+    } else {
+      _trajetDepart = null;
+      _trajetArrivee = null;
+      _trajetPolyline = [];
+    }
+  }
+
+  void _fitMapToTrajet() {
+    if (_trajetDepart == null || _trajetArrivee == null) return;
+
+    // Créer une liste de tous les points à afficher
+    List<LatLng> allPoints = [_trajetDepart!, _trajetArrivee!];
+
+    // Ajouter la position de l'utilisateur si disponible
+    if (_userLocation != null) {
+      allPoints.add(_userLocation!);
+    }
+
+    // Calculer les bounds (limites) qui englobent tous les points
+    double minLat = allPoints[0].latitude;
+    double maxLat = allPoints[0].latitude;
+    double minLng = allPoints[0].longitude;
+    double maxLng = allPoints[0].longitude;
+
+    for (var point in allPoints) {
+      if (point.latitude < minLat) minLat = point.latitude;
+      if (point.latitude > maxLat) maxLat = point.latitude;
+      if (point.longitude < minLng) minLng = point.longitude;
+      if (point.longitude > maxLng) maxLng = point.longitude;
+    }
+
+    // Calculer le centre et le zoom approprié
+    final centerLat = (minLat + maxLat) / 2;
+    final centerLng = (minLng + maxLng) / 2;
+    final center = LatLng(centerLat, centerLng);
+
+    // Calculer la distance entre les points les plus éloignés
+    final latDiff = maxLat - minLat;
+    final lngDiff = maxLng - minLng;
+    final maxDiff = latDiff > lngDiff ? latDiff : lngDiff;
+
+    // Déterminer le niveau de zoom en fonction de la distance
+    double zoom;
+    if (maxDiff > 0.5) {
+      zoom = 10.0; // Vue large pour grandes distances
+    } else if (maxDiff > 0.2) {
+      zoom = 11.5; // Vue moyenne
+    } else if (maxDiff > 0.1) {
+      zoom = 12.5; // Vue rapprochée
+    } else {
+      zoom = 13.5; // Vue très rapprochée
+    }
+
+    // Déplacer et zoomer la carte de manière fluide
+    // Note: flutter_map ne supporte pas l'animation native, mais le mouvement sera visible
+    _mapController.move(center, zoom);
+
+    // Afficher un message à l'utilisateur
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              'Itinéraire affiché: ${_selectedTrajet?['nom'] ?? 'Trajet'}'),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   Future<void> _initializeLocation() async {
@@ -66,82 +357,12 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
         _userLocation = LatLng(position.latitude, position.longitude);
         _isLoadingLocation = false;
       });
-
-      // Charger les bus à proximité (données simulées pour l'instant)
-      _loadNearbyBuses();
     } catch (e) {
       setState(() {
         _isLoadingLocation = false;
       });
       _showError('Erreur de localisation: $e');
     }
-  }
-
-  void _loadNearbyBuses() {
-    // Données simulées - À remplacer par un appel API réel
-    if (_userLocation == null) return;
-
-    final mockBuses = [
-      BusPosition(
-        busId: 'BUS-001',
-        latitude: _userLocation!.latitude + 0.01,
-        longitude: _userLocation!.longitude + 0.01,
-        routeName: 'Kinshasa - Gombe',
-        direction: 'Gombe',
-        status: BusStatus.active,
-        occupancy: 25,
-        capacity: 40,
-        speed: 45.0,
-      ),
-      BusPosition(
-        busId: 'BUS-002',
-        latitude: _userLocation!.latitude - 0.015,
-        longitude: _userLocation!.longitude + 0.02,
-        routeName: 'Kinshasa - Lemba',
-        direction: 'Lemba',
-        status: BusStatus.active,
-        occupancy: 35,
-        capacity: 40,
-        speed: 38.0,
-      ),
-      BusPosition(
-        busId: 'BUS-003',
-        latitude: _userLocation!.latitude + 0.02,
-        longitude: _userLocation!.longitude - 0.01,
-        routeName: 'Gombe - Lemba',
-        direction: 'Lemba',
-        status: BusStatus.active,
-        occupancy: 15,
-        capacity: 40,
-        speed: 42.0,
-      ),
-      BusPosition(
-        busId: 'BUS-004',
-        latitude: _userLocation!.latitude - 0.01,
-        longitude: _userLocation!.longitude - 0.015,
-        routeName: 'Kinshasa - Ngaliema',
-        direction: 'Ngaliema',
-        status: BusStatus.active,
-        occupancy: 10,
-        capacity: 40,
-        speed: 50.0,
-      ),
-    ];
-
-    // Filtrer les bus dans le rayon de 20km
-    final filteredBuses = mockBuses.where((bus) {
-      final distance = _calculateDistance(
-        _userLocation!.latitude,
-        _userLocation!.longitude,
-        bus.latitude,
-        bus.longitude,
-      );
-      return distance <= _maxRadiusKm;
-    }).toList();
-
-    setState(() {
-      _nearbyBuses = filteredBuses;
-    });
   }
 
   double _calculateDistance(
@@ -305,7 +526,7 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            bus.busId,
+                            'Bus #${bus.busId}',
                             style: Theme.of(context)
                                 .textTheme
                                 .titleLarge
@@ -313,6 +534,15 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
                                   fontWeight: FontWeight.bold,
                                 ),
                           ),
+                          if (bus.immatriculation != null)
+                            Text(
+                              bus.immatriculation!,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           Text(
                             _getStatusText(bus.status),
                             style: TextStyle(
@@ -425,6 +655,52 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
 
               const SizedBox(height: 16),
 
+              // Bus Model and Brand
+              if (bus.marque != null || bus.modele != null)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Informations du véhicule',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.lightGrey,
+                        borderRadius: BorderRadius.circular(12),
+                        border:
+                            Border.all(color: AppColors.grey.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.local_shipping,
+                            color: AppColors.primaryPurple,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            '${bus.marque ?? ''} ${bus.modele ?? ''}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.black,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
+
               // Bus Information
               Row(
                 children: [
@@ -434,7 +710,8 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
                       decoration: BoxDecoration(
                         color: AppColors.lightGrey,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.grey.withOpacity(0.3)),
+                        border:
+                            Border.all(color: AppColors.grey.withOpacity(0.3)),
                       ),
                       child: Column(
                         children: [
@@ -470,7 +747,8 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
                       decoration: BoxDecoration(
                         color: AppColors.lightGrey,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.grey.withOpacity(0.3)),
+                        border:
+                            Border.all(color: AppColors.grey.withOpacity(0.3)),
                       ),
                       child: Column(
                         children: [
@@ -913,6 +1191,11 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
           ),
           actions: [
             IconButton(
+              icon: Icon(_isUrbanMode ? Icons.location_city : Icons.landscape),
+              onPressed: _toggleUrbanMode,
+              tooltip: _isUrbanMode ? 'Mode inter-urbain' : 'Mode urbain',
+            ),
+            IconButton(
               icon: const Icon(Icons.my_location),
               onPressed: () {
                 if (_userLocation != null) {
@@ -923,7 +1206,16 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
             ),
             IconButton(
               icon: const Icon(Icons.refresh),
-              onPressed: _loadNearbyBuses,
+              onPressed: () {
+                // Recharger les bus
+                if (_selectedTrajet != null && _selectedTrajet!['id'] != null) {
+                  // Si une ligne est sélectionnée, recharger les bus de cette ligne
+                  _loadBusByTrajet(_selectedTrajet!['id'].toString());
+                } else {
+                  // Sinon, recharger tous les bus à proximité
+                  _loadAllNearbyBuses();
+                }
+              },
               tooltip: 'Actualiser',
             ),
           ],
@@ -999,6 +1291,17 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
                               ),
                             ],
                           ),
+                          // Polyline de l'itinéraire du trajet
+                          if (_trajetPolyline.isNotEmpty)
+                            PolylineLayer(
+                              polylines: [
+                                Polyline(
+                                  points: _trajetPolyline,
+                                  strokeWidth: 4.0,
+                                  color: Colors.red,
+                                ),
+                              ],
+                            ),
                           // Marqueur de l'utilisateur
                           MarkerLayer(
                             markers: [
@@ -1034,9 +1337,9 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
                               ),
                             ],
                           ),
-                          // Marqueurs des bus
+                          // Marqueurs des bus (filtrés)
                           MarkerLayer(
-                            markers: _nearbyBuses.map((bus) {
+                            markers: _filteredBuses.map((bus) {
                               final isSelected =
                                   _selectedBus?.busId == bus.busId;
                               return Marker(
@@ -1074,6 +1377,70 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
                               );
                             }).toList(),
                           ),
+                          // Marqueurs du trajet (départ et arrivée)
+                          if (_trajetDepart != null || _trajetArrivee != null)
+                            MarkerLayer(
+                              markers: [
+                                if (_trajetDepart != null)
+                                  Marker(
+                                    point: _trajetDepart!,
+                                    width: 50,
+                                    height: 50,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.green,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: AppColors.white,
+                                          width: 3,
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: AppColors.black
+                                                .withOpacity(0.3),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Icon(
+                                        Icons.location_on,
+                                        color: AppColors.white,
+                                        size: 28,
+                                      ),
+                                    ),
+                                  ),
+                                if (_trajetArrivee != null)
+                                  Marker(
+                                    point: _trajetArrivee!,
+                                    width: 50,
+                                    height: 50,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.red,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: AppColors.white,
+                                          width: 3,
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: AppColors.black
+                                                .withOpacity(0.3),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Icon(
+                                        Icons.flag,
+                                        color: AppColors.white,
+                                        size: 28,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
                         ],
                       ),
 
@@ -1102,67 +1469,264 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
                         ),
                       ),
 
-                      // Info panel
+                      // Barre de recherche et info panel
                       Positioned(
                         top: 16,
-                        left: 16,
-                        right: 16,
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.black.withOpacity(0.1),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.directions_bus,
-                                    color: AppColors.primaryPurple,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '${_nearbyBuses.length} bus à proximité',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
+                        left: 10,
+                        right: 10,
+                        child: Row(
+                          children: [
+                            // Barre de recherche
+                            Expanded(
+                              flex: 3,
+                              child: Container(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 12),
                                 decoration: BoxDecoration(
-                                  color:
-                                      AppColors.primaryPurple.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
+                                  color: AppColors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.black.withOpacity(0.1),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
                                 ),
-                                child: Text(
-                                  'Rayon: ${_maxRadiusKm.toInt()} km',
-                                  style: TextStyle(
-                                    color: AppColors.primaryPurple,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.route,
+                                      color: AppColors.textSecondary,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: _isLoadingTrajets
+                                          ? const Text(
+                                              'Chargement...',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: AppColors.textHint,
+                                              ),
+                                            )
+                                          : DropdownButtonHideUnderline(
+                                              child: DropdownButton<
+                                                  Map<String, dynamic>>(
+                                                value: _selectedTrajet,
+                                                dropdownColor: Colors.white,
+                                                hint: const Text(
+                                                  'Sélectionner une ligne',
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    color: AppColors.textHint,
+                                                  ),
+                                                ),
+                                                isExpanded: true,
+                                                menuMaxHeight: 400,
+                                                icon: const Icon(
+                                                  Icons.arrow_drop_down,
+                                                  color:
+                                                      AppColors.primaryPurple,
+                                                ),
+                                                items: _trajetsFromApi
+                                                    .map((trajet) {
+                                                  final distance =
+                                                      trajet['distance_totale'];
+                                                  final distanceText = distance !=
+                                                          null
+                                                      ? ' (${double.parse(distance.toString()).toStringAsFixed(0)} km)'
+                                                      : '';
+                                                  return DropdownMenuItem<
+                                                      Map<String, dynamic>>(
+                                                    value: trajet,
+                                                    child: SizedBox(
+                                                      width: double.infinity,
+                                                      child: Text(
+                                                        '${trajet['nom'] ?? 'Non défini'}$distanceText',
+                                                        style: const TextStyle(
+                                                          fontSize: 13,
+                                                          color:
+                                                              AppColors.black,
+                                                        ),
+                                                        softWrap: true,
+                                                        maxLines: 2,
+                                                        overflow: TextOverflow
+                                                            .visible,
+                                                      ),
+                                                    ),
+                                                  );
+                                                }).toList(),
+                                                onChanged: (trajet) {
+                                                  setState(() {
+                                                    _selectedTrajet = trajet;
+                                                    _updateTrajetCoordinates(
+                                                        trajet);
+                                                  });
+                                                  if (trajet != null &&
+                                                      trajet['id'] != null) {
+                                                    _loadBusByTrajet(
+                                                        trajet['id']
+                                                            .toString());
+                                                  }
+                                                },
+                                              ),
+                                            ),
+                                    ),
+                                    if (_selectedTrajet != null)
+                                      IconButton(
+                                        icon: const Icon(Icons.clear, size: 20),
+                                        onPressed: () {
+                                          setState(() {
+                                            _selectedTrajet = null;
+                                            _nearbyBuses = [];
+                                            _filteredBuses = [];
+                                            _trajetDepart = null;
+                                            _trajetArrivee = null;
+                                            _trajetPolyline = [];
+                                          });
+                                        },
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                      ),
+                                  ],
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(width: 5),
+                            // Info panel
+                            Expanded(
+                              flex: 2,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 5, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: AppColors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.black.withOpacity(0.1),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          '${_filteredBuses.length}/${_nearbyBuses.length}',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 13,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 3,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: _isUrbanMode
+                                                ? AppColors.success
+                                                    .withOpacity(0.1)
+                                                : AppColors.info
+                                                    .withOpacity(0.1),
+                                            borderRadius:
+                                                BorderRadius.circular(6),
+                                          ),
+                                          child: Text(
+                                            _isUrbanMode ? 'Urb.' : 'Inter',
+                                            style: TextStyle(
+                                              color: _isUrbanMode
+                                                  ? AppColors.success
+                                                  : AppColors.info,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 3,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primaryPurple
+                                                .withOpacity(0.1),
+                                            borderRadius:
+                                                BorderRadius.circular(6),
+                                          ),
+                                          child: Text(
+                                            '${_maxRadiusKm.toInt()}km',
+                                            style: TextStyle(
+                                              color: AppColors.primaryPurple,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
+
+                      // Message "Aucun bus trouvé" quand aucun bus disponible
+                      if (_filteredBuses.isEmpty &&
+                          _selectedTrajet != null &&
+                          !_isLoadingBuses)
+                        Positioned(
+                          top: 100,
+                          left: 20,
+                          right: 20,
+                          child: Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: AppColors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.black.withOpacity(0.1),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.directions_bus_outlined,
+                                  size: 48,
+                                  color:
+                                      AppColors.textSecondary.withOpacity(0.5),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Aucun bus actif sur cette ligne',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                     ],
                   ),
       ),

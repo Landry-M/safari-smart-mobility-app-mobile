@@ -136,11 +136,26 @@ class TicketConfirmationScreen extends StatelessWidget {
                     'Ligne',
                     ticketData['route'] ?? 'N/A',
                   ),
+                  if (ticketData['distance'] != null) ...[
+                    const Divider(height: 24),
+                    _buildDetailRow(
+                      'Distance',
+                      '${ticketData['distance'].toStringAsFixed(0)} km',
+                    ),
+                  ],
                   const Divider(height: 24),
                   _buildDetailRow(
                     'Type de billet',
                     ticketData['ticketType'] ?? 'N/A',
                   ),
+                  if (ticketData['seatNumber'] != null) ...[
+                    const Divider(height: 24),
+                    _buildDetailRow(
+                      'Siège',
+                      ticketData['seatNumber'],
+                      isHighlighted: true,
+                    ),
+                  ],
                   const Divider(height: 24),
                   _buildDetailRow(
                     'Méthode de paiement',

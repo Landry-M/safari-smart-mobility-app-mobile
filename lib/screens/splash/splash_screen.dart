@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
+import '../../core/services/driver_session_service.dart';
 import '../../providers/auth_provider.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -43,7 +44,23 @@ class _SplashScreenState extends State<SplashScreen>
     // Start animation
     _animationController.forward();
 
-    // Check authentication state
+    // Vérifier d'abord si une session chauffeur existe
+    final driverSessionService = DriverSessionService();
+    final isDriverLoggedIn = await driverSessionService.isDriverLoggedIn();
+
+    if (isDriverLoggedIn) {
+      // Wait for minimum splash duration
+      await Future.delayed(const Duration(seconds: 2));
+      
+      if (mounted && !_hasNavigated) {
+        _hasNavigated = true;
+        print('✅ Driver session found, navigating to /driver-home');
+        context.go('/driver-home');
+      }
+      return;
+    }
+
+    // Sinon, vérifier l'authentification passager normale
     final authProvider = context.read<AuthProvider>();
     final isAuthenticated = await authProvider.checkFirebaseAuthState();
 

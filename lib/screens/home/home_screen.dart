@@ -182,7 +182,8 @@ class _HomeTab extends StatelessWidget {
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Notifications en cours de développement'),
+                            content:
+                                Text('Notifications en cours de développement'),
                             duration: Duration(seconds: 2),
                           ),
                         );
@@ -272,7 +273,8 @@ class _HomeTab extends StatelessWidget {
                         onPressed: () {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Rechargement de carte en cours de développement'),
+                              content: Text(
+                                  'Rechargement de carte en cours de développement'),
                               duration: Duration(seconds: 2),
                             ),
                           );

@@ -347,6 +347,26 @@ class AuthProvider with ChangeNotifier {
             },
           );
 
+          // Extraire nom et prénom du nom complet
+          final nameParts = userName.split(' ');
+          final prenom = nameParts.isNotEmpty ? nameParts.first : userName;
+          final nom = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+
+          // Créer l'utilisateur dans la base de données MySQL via l'API
+          try {
+            await _apiService.createClientInMySQL(
+              uid: uid,
+              telephone: userPhone,
+              nom: nom.isNotEmpty ? nom : null,
+              prenom: prenom,
+              email: userEmail,
+            );
+            print('✅ Client créé avec succès dans la base de données MySQL');
+          } catch (e) {
+            // Ne pas bloquer l'inscription si l'API MySQL échoue
+            print('⚠️ Erreur lors de la création du client MySQL (non-bloquante): $e');
+          }
+
           // Créer l'utilisateur local avec les données Firestore
           final localUser = User(
             userId: uid,
@@ -507,6 +527,20 @@ class AuthProvider with ChangeNotifier {
     } catch (e) {
       // Continue même si la synchro Firestore échoue
       print('Error syncing user to Firestore: $e');
+    }
+
+    // Synchroniser avec MySQL
+    try {
+      await _apiService.updateClientInMySQL(
+        uid: updatedUser.userId,
+        name: updatedUser.name,
+        telephone: updatedUser.phone,
+        email: updatedUser.email.isNotEmpty ? updatedUser.email : null,
+      );
+      print('✅ Client mis à jour avec succès dans la base de données MySQL');
+    } catch (e) {
+      // Ne pas bloquer la mise à jour si l'API MySQL échoue
+      print('⚠️ Erreur lors de la mise à jour du client MySQL (non-bloquante): $e');
     }
 
     _currentUser = updatedUser;

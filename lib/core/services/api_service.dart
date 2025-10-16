@@ -3,7 +3,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../constants/app_strings.dart';
 
 class ApiService {
-  static const String _baseUrl = 'https://api.safari-mobility.com'; // À remplacer par l'URL réelle
+  static const String _baseUrl = 'https://apiv2.hakika.events'; // À remplacer par l'URL réelle
+  static const String _mysqlApiUrl = 'https://apiv2.hakika.events'; // URL de l'API MySQL
   static const String _storageKeyToken = 'auth_token';
   static const String _storageKeyRefreshToken = 'refresh_token';
   
@@ -407,5 +408,205 @@ class ApiService {
   // Get stored token
   Future<String?> getToken() async {
     return await _storage.read(key: _storageKeyToken);
+  }
+
+  // Create client in MySQL database
+  Future<Map<String, dynamic>> createClientInMySQL({
+    required String uid,
+    required String telephone,
+    String? nom,
+    String? prenom,
+    String? email,
+  }) async {
+    try {
+      // Créer une instance Dio séparée pour l'API MySQL
+      final mysqlDio = Dio(BaseOptions(
+        baseUrl: _mysqlApiUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ));
+
+      final data = {
+        'uid': uid,
+        'telephone': telephone,
+        if (nom != null) 'nom': nom,
+        if (prenom != null) 'prenom': prenom,
+        if (email != null) 'email': email,
+      };
+
+      final response = await mysqlDio.post('/clients', data: data);
+      return response.data;
+    } on DioException catch (e) {
+      // Log l'erreur mais ne pas bloquer l'inscription si l'API MySQL échoue
+      print('Erreur lors de la création du client MySQL: ${e.message}');
+      return {
+        'success': false,
+        'message': 'Erreur MySQL: ${e.message}',
+      };
+    } catch (e) {
+      print('Erreur inattendue lors de la création du client MySQL: $e');
+      return {
+        'success': false,
+        'message': 'Erreur inattendue: $e',
+      };
+    }
+  }
+
+  // Get lignes/trajets for dropdown
+  Future<List<Map<String, dynamic>>> getLignes() async {
+    try {
+      // Créer une instance Dio séparée pour l'API MySQL
+      final mysqlDio = Dio(BaseOptions(
+        baseUrl: _mysqlApiUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ));
+
+      final response = await mysqlDio.get('/trajets/lignes');
+      
+      if (response.data['success'] == true && response.data['data'] != null) {
+        return List<Map<String, dynamic>>.from(response.data['data']);
+      }
+      
+      return [];
+    } on DioException catch (e) {
+      print('Erreur lors de la récupération des lignes: ${e.message}');
+      return [];
+    } catch (e) {
+      print('Erreur inattendue lors de la récupération des lignes: $e');
+      return [];
+    }
+  }
+
+  // Get bus by ligne affectée
+  Future<List<Map<String, dynamic>>> getBusByLigne(String ligneId) async {
+    try {
+      final mysqlDio = Dio(BaseOptions(
+        baseUrl: _mysqlApiUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ));
+
+      final response = await mysqlDio.get('/bus/ligne/$ligneId');
+      
+      if (response.data['success'] == true && response.data['data'] != null) {
+        return List<Map<String, dynamic>>.from(response.data['data']);
+      }
+      
+      return [];
+    } on DioException catch (e) {
+      print('Erreur lors de la récupération des bus: ${e.message}');
+      return [];
+    } catch (e) {
+      print('Erreur inattendue lors de la récupération des bus: $e');
+      return [];
+    }
+  }
+
+  // Get all nearby buses with GPS coordinates
+  Future<List<Map<String, dynamic>>> getAllNearbyBuses() async {
+    try {
+      final mysqlDio = Dio(BaseOptions(
+        baseUrl: _mysqlApiUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ));
+
+      final response = await mysqlDio.get('/bus/nearby');
+      
+      if (response.data['success'] == true && response.data['data'] != null) {
+        return List<Map<String, dynamic>>.from(response.data['data']);
+      }
+      
+      return [];
+    } on DioException catch (e) {
+      print('Erreur lors de la récupération des bus à proximité: ${e.message}');
+      return [];
+    } catch (e) {
+      print('Erreur inattendue lors de la récupération des bus à proximité: $e');
+      return [];
+    }
+  }
+
+  // Update client in MySQL database by UID
+  Future<Map<String, dynamic>> updateClientInMySQL({
+    required String uid,
+    required String name,
+    required String telephone,
+    String? email,
+  }) async {
+    try {
+      // Créer une instance Dio séparée pour l'API MySQL
+      final mysqlDio = Dio(BaseOptions(
+        baseUrl: _mysqlApiUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ));
+
+      // Extraire nom et prénom du nom complet
+      final nameParts = name.split(' ');
+      final prenom = nameParts.isNotEmpty ? nameParts.first : name;
+      final nom = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+
+      // Récupérer d'abord l'ID du client via son UID
+      final getResponse = await mysqlDio.get('/clients/uid/$uid');
+      
+      if (getResponse.data['success'] == true && getResponse.data['data'] != null) {
+        final clientId = getResponse.data['data']['id'];
+        
+        // Mettre à jour avec l'ID
+        final updateData = {
+          'telephone': telephone,
+          'nom': nom.isNotEmpty ? nom : null,
+          'prenom': prenom,
+          if (email != null && email.isNotEmpty) 'email': email,
+        };
+
+        final response = await mysqlDio.put('/clients/$clientId', data: updateData);
+        return response.data;
+      } else {
+        // Si le client n'existe pas, le créer
+        return await createClientInMySQL(
+          uid: uid,
+          telephone: telephone,
+          nom: nom.isNotEmpty ? nom : null,
+          prenom: prenom,
+          email: email,
+        );
+      }
+    } on DioException catch (e) {
+      // Log l'erreur mais ne pas bloquer la mise à jour si l'API MySQL échoue
+      print('Erreur lors de la mise à jour du client MySQL: ${e.message}');
+      return {
+        'success': false,
+        'message': 'Erreur MySQL: ${e.message}',
+      };
+    } catch (e) {
+      print('Erreur inattendue lors de la mise à jour du client MySQL: $e');
+      return {
+        'success': false,
+        'message': 'Erreur inattendue: $e',
+      };
+    }
   }
 }

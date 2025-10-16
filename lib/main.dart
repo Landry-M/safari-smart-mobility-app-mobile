@@ -20,6 +20,9 @@ import 'screens/tickets/ticket_purchase_screen.dart';
 import 'screens/tickets/ticket_confirmation_screen.dart';
 import 'screens/scanner/qr_scanner_screen.dart';
 import 'screens/map/nearby_buses_screen.dart';
+import 'screens/driver/auth_driver_screen.dart';
+import 'screens/driver/home_driver_screen.dart';
+import 'screens/tickets/seat_selection_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -122,6 +125,21 @@ class _MyAppState extends State<MyApp> {
         GoRoute(
           path: '/scanner',
           builder: (context, state) => const QRScannerScreen(),
+        ),
+        GoRoute(
+          path: '/driver-auth',
+          builder: (context, state) => const AuthDriverScreen(),
+        ),
+        GoRoute(
+          path: '/driver-home',
+          builder: (context, state) => const HomeDriverScreen(),
+        ),
+        GoRoute(
+          path: '/seat-selection',
+          builder: (context, state) {
+            final ticketData = state.extra as Map<String, dynamic>;
+            return SeatSelectionScreen(ticketData: ticketData);
+          },
         ),
       ],
     );
