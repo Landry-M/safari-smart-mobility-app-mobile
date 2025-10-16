@@ -235,7 +235,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close),
+                  icon: const Icon(Icons.close, color: AppColors.textSecondary),
                   onPressed: () => Navigator.pop(context),
                 ),
               ],

@@ -197,18 +197,19 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                 bottom: 0,
                 left: 0,
                 right: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: AppColors.black.withOpacity(0.8),
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(24),
-                      topRight: Radius.circular(24),
+                child: SafeArea(
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+                    decoration: BoxDecoration(
+                      color: AppColors.black.withOpacity(0.8),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(24),
+                        topRight: Radius.circular(24),
+                      ),
                     ),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
                       // User Role Info
                       if (user?.role == UserRole.controller) ...[
                         Row(
@@ -265,6 +266,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                       ),
                     ],
                   ),
+                ),
                 ),
               ),
             ],

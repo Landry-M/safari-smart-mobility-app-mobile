@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/currency_helper.dart';
 import '../../core/services/database_service.dart';
+import '../../core/services/api_service.dart';
 import '../../data/models/ticket_model.dart';
 import '../../data/models/bus_position_model.dart';
 import '../../data/models/transaction_model.dart';
@@ -724,7 +725,7 @@ class _BusTicketOrderScreenState extends State<BusTicketOrderScreen> {
         currency: user.currency,
         routeName: widget.bus.routeName,
         origin: widget.bus.routeName?.split(' - ').first,
-        destination: widget.bus.direction,
+        destination: widget.bus.routeName?.split(' - ').last,
         busId: widget.bus.busId,
         expiresAt: expiresAt,
         isSynced: false,
@@ -749,12 +750,107 @@ class _BusTicketOrderScreenState extends State<BusTicketOrderScreen> {
       await dbService.saveTicket(ticket);
       await dbService.saveTransaction(transaction);
 
+      // Insérer le billet dans MySQL
+      try {
+        print('🔵 Début de l\'insertion du billet dans MySQL...');
+        final apiService = ApiService();
+        
+        // Récupérer le client_id depuis MySQL via l'UID Firebase
+        int? clientId;
+        try {
+          print('🔵 Récupération du client_id pour UID: ${user.userId}');
+          final clientResponse = await apiService.getClientByUid(user.userId);
+          print('🔵 Réponse getClientByUid: $clientResponse');
+          
+          if (clientResponse['success'] == true && clientResponse['data'] != null) {
+            clientId = clientResponse['data']['id'];
+            print('✅ client_id trouvé: $clientId');
+          } else {
+            print('⚠️ Client non trouvé dans MySQL pour UID: ${user.userId}');
+          }
+        } catch (e) {
+          print('⚠️ Impossible de récupérer le client_id: $e');
+        }
+
+        // Mapper le mode de paiement
+        String modePaiement = 'autre';
+        switch (_selectedPaymentMethod) {
+          case PaymentMethod.cash:
+            modePaiement = 'especes';
+            break;
+          case PaymentMethod.mobileMoney:
+            modePaiement = 'mobile_money';
+            break;
+          case PaymentMethod.card:
+            modePaiement = 'carte_bancaire';
+            break;
+          default:
+            modePaiement = 'autre';
+        }
+
+        // Convertir la devise
+        String devise = 'CDF';
+        if (user.currency == 'USD') {
+          devise = 'USD';
+        }
+
+        // Récupérer le trajet_id depuis le bus
+        // Si le bus a un routeId, on l'utilise, sinon on utilise 7 (KAPELA - CLINIC NGALIEMA par défaut)
+        int trajetId = 7; // Valeur par défaut: premier trajet existant
+        if (widget.bus.routeId != null && widget.bus.routeId!.isNotEmpty) {
+          trajetId = int.tryParse(widget.bus.routeId!) ?? 7;
+        }
+        
+        print('🔵 Données du billet à insérer:');
+        print('  - numeroBillet: $ticketNumber');
+        print('  - busId: ${widget.bus.busId}');
+        print('  - clientId: $clientId');
+        print('  - trajetId: $trajetId');
+        print('  - arretDepart: ${widget.bus.routeName?.split(' - ').first ?? 'Départ'}');
+        print('  - arretArrivee: ${widget.bus.routeName?.split(' - ').last ?? 'Arrivée'}');
+        print('  - dateVoyage: ${now.toString().substring(0, 10)}');
+        print('  - prixPaye: $ticketPrice');
+        print('  - devise: $devise');
+        print('  - modePaiement: $modePaiement');
+        
+        print('📝 Appel API createBillet en cours...');
+        final billetResponse = await apiService.createBillet(
+          numeroBillet: ticketNumber,
+          qrCode: qrCode,
+          trajetId: trajetId, // Utiliser le routeId du bus
+          busId: widget.bus.busId,
+          clientId: clientId,
+          arretDepart: widget.bus.routeName?.split(' - ').first ?? 'Départ',
+          arretArrivee: widget.bus.routeName?.split(' - ').last ?? 'Arrivée',
+          dateVoyage: now.toString().substring(0, 10), // Format YYYY-MM-DD
+          heureDepart: null,
+          siegeNumero: null, // Sera mis à jour après sélection du siège
+          prixPaye: ticketPrice,
+          devise: devise,
+          statutBillet: 'paye',
+          modePaiement: modePaiement,
+          referencePaiement: transactionId,
+        );
+        
+        print('🔵 Réponse createBillet: $billetResponse');
+        
+        if (billetResponse['success'] == true) {
+          print('✅ Billet enregistré dans MySQL avec succès - ID: ${billetResponse['data']?['id']}');
+        } else {
+          print('❌ Échec de l\'enregistrement du billet: ${billetResponse['message']}');
+        }
+      } catch (e, stackTrace) {
+        // Erreur non-bloquante - le billet est déjà sauvegardé localement
+        print('⚠️ Erreur lors de l\'enregistrement dans MySQL (non-bloquante): $e');
+        print('Stack trace: $stackTrace');
+      }
+
       // Prepare ticket data for seat selection screen
       final ticketData = {
         'ticketNumber': ticketNumber,
         'busId': widget.bus.busId,
         'route': widget.bus.routeName ?? 'Non définie',
-        'direction': widget.bus.direction ?? 'Non définie',
+        'direction': widget.bus.routeName?.split(' - ').last ?? 'Non définie',
         'ticketType': _ticketPrices[_selectedTicketType]!['name'],
         'paymentMethod': _getPaymentMethodName(_selectedPaymentMethod),
         'amount': CurrencyHelper.convertAndFormat(
@@ -767,7 +863,7 @@ class _BusTicketOrderScreenState extends State<BusTicketOrderScreen> {
         'userName': user.name,
         'qrCode': qrCode,
         'origin': widget.bus.routeName?.split(' - ').first,
-        'destination': widget.bus.direction,
+        'destination': widget.bus.routeName?.split(' - ').last,
         'price': ticketPrice,
         'currency': user.currency,
         'ticketTypeEnum': _selectedTicketType.name,

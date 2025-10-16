@@ -753,6 +753,124 @@ class _TicketPurchaseScreenState extends State<TicketPurchaseScreen> {
       await dbService.saveTicket(ticket);
       await dbService.saveTransaction(transaction);
 
+      // ============================================
+      // INSERTION DANS MYSQL (BASE DE DONNÉES EN LIGNE)
+      // ============================================
+      print('🔵 ========================================');
+      print('🔵 DÉBUT INSERTION BILLET DANS MYSQL');
+      print('🔵 ========================================');
+      
+      try {
+        // Étape 1: Récupération du client_id depuis MySQL via UID Firebase
+        print('🔵 Étape 1: Récupération du client_id pour UID: ${user.userId}');
+        final clientResponse = await _apiService.getClientByUid(user.userId);
+        print('🔵 Réponse getClientByUid: $clientResponse');
+        
+        int? clientId;
+        if (clientResponse['success'] == true && clientResponse['data'] != null) {
+          clientId = clientResponse['data']['id'];
+          print('✅ client_id trouvé: $clientId');
+        } else {
+          print('⚠️ Client non trouvé dans MySQL - clientId sera null');
+          clientId = null;
+        }
+
+        // Étape 2: Récupération du trajet_id depuis la route sélectionnée
+        print('🔵 Étape 2: Extraction du trajet_id depuis _selectedRoute');
+        int trajetId = 7; // Valeur par défaut: KAPELA - CLINIC NGALIEMA
+        
+        if (_selectedRoute != null && _selectedRoute!['id'] != null) {
+          final routeIdString = _selectedRoute!['id'].toString();
+          trajetId = int.tryParse(routeIdString) ?? 7;
+          print('✅ trajet_id extrait: $trajetId (depuis route ID: $routeIdString)');
+        } else {
+          print('⚠️ Aucun ID de route trouvé, utilisation du trajet par défaut: $trajetId');
+        }
+
+        // Étape 3: Préparation des données du billet pour MySQL
+        print('🔵 Étape 3: Préparation des données du billet');
+        
+        // Conversion du mode de paiement
+        String modePaiement;
+        switch (_selectedPaymentMethod) {
+          case PaymentMethod.cash:
+            modePaiement = 'especes';
+            break;
+          case PaymentMethod.mobileMoney:
+            modePaiement = 'mobile_money';
+            break;
+          case PaymentMethod.card:
+            modePaiement = 'carte_bancaire';
+            break;
+          case PaymentMethod.prepaidCard:
+          case PaymentMethod.wallet:
+            modePaiement = 'autre';
+            break;
+        }
+        
+        // Conversion de la devise
+        final devise = user.currency == 'FC' ? 'CDF' : user.currency;
+        
+        print('🔵 Données du billet à insérer:');
+        print('  - numeroBillet: $ticketNumber');
+        print('  - qrCode: $qrCode');
+        print('  - trajetId: $trajetId');
+        print('  - clientId: $clientId');
+        print('  - arretDepart: ${origin ?? "Non défini"}');
+        print('  - arretArrivee: ${destination ?? "Non défini"}');
+        print('  - dateVoyage: ${now.toString().substring(0, 10)}');
+        print('  - prixPaye: $ticketPrice');
+        print('  - devise: $devise');
+        print('  - modePaiement: $modePaiement');
+        print('  - statutBillet: reserve');
+
+        // Étape 4: Appel API pour créer le billet dans MySQL
+        print('🔵 Étape 4: Appel API createBillet()...');
+        final billetResponse = await _apiService.createBillet(
+          numeroBillet: ticketNumber,
+          qrCode: qrCode,
+          trajetId: trajetId,
+          busId: null, // Pas de bus_id pour achat depuis écran principal
+          clientId: clientId,
+          arretDepart: origin ?? 'Non défini',
+          arretArrivee: destination ?? 'Non défini',
+          dateVoyage: now.toString().substring(0, 10), // Format: YYYY-MM-DD
+          heureDepart: null,
+          siegeNumero: null, // Sera mis à jour après sélection du siège
+          prixPaye: ticketPrice,
+          devise: devise,
+          statutBillet: 'reserve',
+          modePaiement: modePaiement,
+          referencePaiement: transactionId,
+        );
+        
+        print('🔵 Réponse createBillet: $billetResponse');
+        
+        // Étape 5: Vérification du résultat
+        if (billetResponse['success'] == true) {
+          final billetId = billetResponse['data']?['id'];
+          print('✅ ========================================');
+          print('✅ Billet enregistré dans MySQL avec succès !');
+          print('✅ ID MySQL: $billetId');
+          print('✅ Numéro: $ticketNumber');
+          print('✅ ========================================');
+        } else {
+          print('⚠️ ========================================');
+          print('⚠️ Échec de l\'insertion MySQL (non-bloquant)');
+          print('⚠️ Message: ${billetResponse['message']}');
+          print('⚠️ Le billet reste valide en local');
+          print('⚠️ ========================================');
+        }
+      } catch (mysqlError) {
+        // Erreur non-bloquante : le billet local reste valide
+        print('❌ ========================================');
+        print('❌ ERREUR lors de l\'insertion MySQL (non-bloquante)');
+        print('❌ Erreur: $mysqlError');
+        print('❌ Stack trace: ${StackTrace.current}');
+        print('❌ Le billet reste valide en local (Isar)');
+        print('❌ ========================================');
+      }
+
       // Prepare ticket data for seat selection screen
       final ticketData = {
         'ticketNumber': ticketNumber,

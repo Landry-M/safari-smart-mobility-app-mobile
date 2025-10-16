@@ -609,4 +609,224 @@ class ApiService {
       };
     }
   }
+
+  /// Authentifier un membre de l'équipe de bord (chauffeur, receveur, contrôleur)
+  /// 
+  /// [matricule] Le matricule du membre
+  /// [pin] Le code PIN (6 chiffres)
+  /// [poste] Le poste: 'chauffeur', 'receveur', ou 'controleur'
+  /// 
+  /// Retourne les données du membre si l'authentification réussit
+  Future<Map<String, dynamic>> authenticateEquipeBord({
+    required String matricule,
+    required String pin,
+    required String poste,
+  }) async {
+    try {
+      final mysqlDio = Dio(BaseOptions(
+        baseUrl: _mysqlApiUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ));
+
+      final response = await mysqlDio.post(
+        '/equipe-bord/auth',
+        data: {
+          'matricule': matricule,
+          'pin': pin,
+          'poste': poste,
+        },
+      );
+
+      return response.data;
+    } on DioException catch (e) {
+      print('Erreur lors de l\'authentification de l\'équipe: ${e.message}');
+      if (e.response?.statusCode == 401) {
+        return {
+          'success': false,
+          'message': 'Identifiants incorrects',
+        };
+      }
+      return {
+        'success': false,
+        'message': 'Erreur de connexion: ${e.message}',
+      };
+    } catch (e) {
+      print('Erreur inattendue lors de l\'authentification: $e');
+      return {
+        'success': false,
+        'message': 'Erreur inattendue: $e',
+      };
+    }
+  }
+
+  /// Récupérer les informations complètes d'un bus depuis l'API MySQL
+  /// 
+  /// [numero] Le numéro du bus (ex: "BUS-225")
+  /// 
+  /// Retourne les données du bus si trouvé
+  Future<Map<String, dynamic>> getBusInfo(String numero) async {
+    try {
+      final mysqlDio = Dio(BaseOptions(
+        baseUrl: _mysqlApiUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ));
+
+      final response = await mysqlDio.get('/bus/numero/$numero');
+
+      return response.data;
+    } on DioException catch (e) {
+      print('Erreur lors de la récupération du bus: ${e.message}');
+      if (e.response?.statusCode == 404) {
+        return {
+          'success': false,
+          'message': 'Bus non trouvé',
+        };
+      }
+      return {
+        'success': false,
+        'message': 'Erreur de connexion: ${e.message}',
+      };
+    } catch (e) {
+      print('Erreur inattendue lors de la récupération du bus: $e');
+      return {
+        'success': false,
+        'message': 'Erreur inattendue: $e',
+      };
+    }
+  }
+
+  /// Récupérer un client par son UID Firebase
+  /// 
+  /// [uid] L'UID Firebase du client
+  /// 
+  /// Retourne les données du client si trouvé
+  Future<Map<String, dynamic>> getClientByUid(String uid) async {
+    try {
+      final mysqlDio = Dio(BaseOptions(
+        baseUrl: _mysqlApiUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ));
+
+      final response = await mysqlDio.get('/clients/uid/$uid');
+
+      return response.data;
+    } on DioException catch (e) {
+      print('⚠️ Erreur lors de la récupération du client par UID: ${e.message}');
+      if (e.response?.statusCode == 404) {
+        return {
+          'success': false,
+          'message': 'Client non trouvé',
+        };
+      }
+      return {
+        'success': false,
+        'message': 'Erreur de connexion: ${e.message}',
+      };
+    } catch (e) {
+      print('❌ Erreur inattendue lors de la récupération du client: $e');
+      return {
+        'success': false,
+        'message': 'Erreur inattendue: $e',
+      };
+    }
+  }
+
+  /// Créer un billet dans la base de données MySQL
+  /// 
+  /// Insère les données du billet après validation de l'achat
+  /// 
+  /// Retourne les données du billet créé si succès
+  Future<Map<String, dynamic>> createBillet({
+    required String numeroBillet,
+    required String qrCode,
+    required int? trajetId,
+    required String? busId,
+    required int? clientId,
+    required String arretDepart,
+    required String arretArrivee,
+    required String dateVoyage,
+    String? heureDepart,
+    String? siegeNumero,
+    required double prixPaye,
+    required String devise,
+    required String statutBillet,
+    required String modePaiement,
+    String? referencePaiement,
+  }) async {
+    try {
+      final mysqlDio = Dio(BaseOptions(
+        baseUrl: _mysqlApiUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ));
+
+      final data = {
+        'numero_billet': numeroBillet,
+        'qr_code': qrCode,
+        'trajet_id': trajetId,
+        'tarif_id': 1, // Default tarif_id
+        'bus_id': busId,
+        'client_id': clientId,
+        'arret_depart': arretDepart,
+        'arret_arrivee': arretArrivee,
+        'date_voyage': dateVoyage,
+        'heure_depart': heureDepart,
+        'siege_numero': siegeNumero,
+        'prix_paye': prixPaye,
+        'devise': devise,
+        'statut_billet': statutBillet,
+        'mode_paiement': modePaiement,
+        'reference_paiement': referencePaiement,
+        'point_vente': 'Application mobile',
+      };
+
+      print('📝 Création de billet dans MySQL: $numeroBillet');
+      print('🔵 URL API: $_mysqlApiUrl/billets');
+      print('🔵 Données envoyées: $data');
+      
+      final response = await mysqlDio.post('/billets', data: data);
+      
+      print('🔵 Réponse HTTP reçue - Status: ${response.statusCode}');
+
+      if (response.data['success'] == true) {
+        print('✅ Billet créé avec succès dans MySQL: ${response.data['data']['id']}');
+      }
+
+      return response.data;
+    } on DioException catch (e) {
+      print('⚠️ Erreur lors de la création du billet dans MySQL: ${e.message}');
+      if (e.response != null) {
+        print('Réponse serveur: ${e.response?.data}');
+      }
+      return {
+        'success': false,
+        'message': 'Erreur de connexion: ${e.message}',
+      };
+    } catch (e) {
+      print('❌ Erreur inattendue lors de la création du billet: $e');
+      return {
+        'success': false,
+        'message': 'Erreur inattendue: $e',
+      };
+    }
+  }
 }

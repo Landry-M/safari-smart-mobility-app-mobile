@@ -44,7 +44,6 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
   // Trajet coordinates
   LatLng? _trajetDepart;
   LatLng? _trajetArrivee;
-  List<LatLng> _trajetPolyline = [];
 
   // Rayon urbain: 5 km, Inter-urbain: 30 km
   double _maxRadiusKm = 5.0;
@@ -232,7 +231,6 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
     if (trajet == null) {
       _trajetDepart = null;
       _trajetArrivee = null;
-      _trajetPolyline = [];
       return;
     }
 
@@ -242,29 +240,38 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
     final latArrivee = trajet['latitude_arrivee'];
     final lonArrivee = trajet['longitude_arrivee'];
 
+    print('🗺️ Coordonnées du trajet "${trajet['nom']}":');
+    print('  - Départ: lat=$latDepart, lon=$lonDepart');
+    print('  - Arrivée: lat=$latArrivee, lon=$lonArrivee');
+
     if (latDepart != null &&
         lonDepart != null &&
         latArrivee != null &&
         lonArrivee != null) {
-      _trajetDepart = LatLng(
-        double.parse(latDepart.toString()),
-        double.parse(lonDepart.toString()),
-      );
-      _trajetArrivee = LatLng(
-        double.parse(latArrivee.toString()),
-        double.parse(lonArrivee.toString()),
-      );
+      try {
+        _trajetDepart = LatLng(
+          double.parse(latDepart.toString()),
+          double.parse(lonDepart.toString()),
+        );
+        _trajetArrivee = LatLng(
+          double.parse(latArrivee.toString()),
+          double.parse(lonArrivee.toString()),
+        );
 
-      // Créer une polyline simple entre les deux points
-      // Pour un itinéraire réel, vous pourriez utiliser une API de routage
-      _trajetPolyline = [_trajetDepart!, _trajetArrivee!];
+        print(
+            '✅ Marqueurs créés: Départ=$_trajetDepart, Arrivée=$_trajetArrivee');
 
-      // Ajuster la carte pour afficher tout l'itinéraire
-      _fitMapToTrajet();
+        // Ajuster la carte pour afficher tout l'itinéraire
+        _fitMapToTrajet();
+      } catch (e) {
+        print('❌ Erreur lors du parsing des coordonnées: $e');
+        _trajetDepart = null;
+        _trajetArrivee = null;
+      }
     } else {
+      print('⚠️ Coordonnées manquantes pour ce trajet');
       _trajetDepart = null;
       _trajetArrivee = null;
-      _trajetPolyline = [];
     }
   }
 
@@ -467,6 +474,192 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
     );
   }
 
+  void _showTrajetPointDetails(String type) {
+    final point = type == 'départ' ? _trajetDepart : _trajetArrivee;
+    if (point == null || _selectedTrajet == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) => Container(
+          color: AppColors.white,
+          child: SingleChildScrollView(
+            controller: scrollController,
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Handle bar
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 24),
+                    decoration: BoxDecoration(
+                      color: AppColors.grey.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+
+                // En-tête avec icône
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: type == 'départ'
+                            ? Colors.green.withOpacity(0.1)
+                            : Colors.red.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        type == 'départ' ? Icons.location_on : Icons.flag,
+                        color: type == 'départ' ? Colors.green : Colors.red,
+                        size: 32,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Point de ${type}',
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _selectedTrajet!['nom'] ?? 'Ligne',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
+                const Divider(),
+                const SizedBox(height: 16),
+
+                // Coordonnées GPS
+                _buildInfoRow(
+                  Icons.place,
+                  'Latitude',
+                  point.latitude.toStringAsFixed(6),
+                ),
+                const SizedBox(height: 12),
+                _buildInfoRow(
+                  Icons.place,
+                  'Longitude',
+                  point.longitude.toStringAsFixed(6),
+                ),
+
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 16),
+
+                // Informations du trajet
+                if (_selectedTrajet!['distance_totale'] != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _buildInfoRow(
+                      Icons.straighten,
+                      'Distance totale',
+                      '${_selectedTrajet!['distance_totale']} km',
+                    ),
+                  ),
+                if (_selectedTrajet!['duree_estimee'] != null &&
+                    _selectedTrajet!['duree_estimee'] != '0')
+                  _buildInfoRow(
+                    Icons.access_time,
+                    'Durée estimée',
+                    '${_selectedTrajet!['duree_estimee']} min',
+                  ),
+
+                const SizedBox(height: 24),
+
+                // Bouton fermer
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryPurple,
+                      foregroundColor: AppColors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Fermer',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+
+                SizedBox(height: MediaQuery.of(context).padding.bottom),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: AppColors.primaryPurple),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildBusDetailsSheet(BusPosition bus) {
     final distance = _userLocation != null
         ? _calculateDistance(
@@ -483,7 +676,7 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
         final ticketPrice = 200.0; // Prix en FC
 
         return Container(
-          color: Colors.white,
+          color: AppColors.white,
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -581,10 +774,10 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
               // Route Line Display
               const Text(
                 'Ligne de bus',
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.black,
+                  color: AppColors.textPrimary,
                 ),
               ),
 
@@ -594,7 +787,7 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.white,
+                  color: AppColors.lightGrey,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: AppColors.primaryPurple,
@@ -625,7 +818,7 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.black,
+                              color: AppColors.textPrimary,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -662,10 +855,10 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
                   children: [
                     const Text(
                       'Informations du véhicule',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.black,
+                        color: AppColors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -691,7 +884,7 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
-                              color: AppColors.black,
+                              color: AppColors.textPrimary,
                             ),
                           ),
                         ],
@@ -726,7 +919,7 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: AppColors.black,
+                              color: AppColors.textPrimary,
                             ),
                           ),
                           const Text(
@@ -763,7 +956,7 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: AppColors.black,
+                              color: AppColors.textPrimary,
                             ),
                           ),
                           const Text(
@@ -802,7 +995,7 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
                         Text(
                           'Prix du billet',
                           style: TextStyle(
-                            color: AppColors.white.withOpacity(0.9),
+                            color: AppColors.textSecondary,
                             fontSize: 14,
                           ),
                         ),
@@ -813,7 +1006,7 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
                             user?.currency ?? 'FC',
                           ),
                           style: const TextStyle(
-                            color: AppColors.white,
+                            color: AppColors.textPrimary,
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
                           ),
@@ -822,8 +1015,8 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
                           const SizedBox(height: 4),
                           Text(
                             '(≈ ${ticketPrice.toStringAsFixed(0)} FC)',
-                            style: TextStyle(
-                              color: AppColors.white.withOpacity(0.8),
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
                               fontSize: 12,
                             ),
                           ),
@@ -832,7 +1025,7 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
                     ),
                     Icon(
                       Icons.confirmation_number,
-                      color: AppColors.white.withOpacity(0.8),
+                      color: AppColors.textSecondary,
                       size: 32,
                     ),
                   ],
@@ -907,7 +1100,7 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
 
         if (user == null) {
           return Container(
-            color: Colors.white,
+            color: AppColors.white,
             padding: const EdgeInsets.all(24),
             child: const Center(
               child: Text('Aucune information utilisateur disponible'),
@@ -916,7 +1109,7 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
         }
 
         return Container(
-          color: Colors.white,
+          color: AppColors.white,
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -966,7 +1159,7 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
                           style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
-                            color: AppColors.black,
+                            color: AppColors.textPrimary,
                           ),
                         ),
                         Text(
@@ -1034,8 +1227,8 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
                   children: [
                     Text(
                       'Solde disponible',
-                      style: TextStyle(
-                        color: AppColors.white.withOpacity(0.9),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
                         fontSize: 14,
                       ),
                     ),
@@ -1046,7 +1239,7 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
                         user.currency ?? 'FC',
                       ),
                       style: const TextStyle(
-                        color: AppColors.white,
+                        color: AppColors.textPrimary,
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
                       ),
@@ -1055,8 +1248,8 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
                       const SizedBox(height: 4),
                       Text(
                         '(≈ ${(user.balance ?? 0.0).toStringAsFixed(0)} FC)',
-                        style: TextStyle(
-                          color: AppColors.white.withOpacity(0.8),
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
                           fontSize: 12,
                         ),
                       ),
@@ -1115,7 +1308,7 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.black,
+                  color: AppColors.textPrimary,
                 ),
               ),
             ],
@@ -1291,17 +1484,6 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
                               ),
                             ],
                           ),
-                          // Polyline de l'itinéraire du trajet
-                          if (_trajetPolyline.isNotEmpty)
-                            PolylineLayer(
-                              polylines: [
-                                Polyline(
-                                  points: _trajetPolyline,
-                                  strokeWidth: 4.0,
-                                  color: Colors.red,
-                                ),
-                              ],
-                            ),
                           // Marqueur de l'utilisateur
                           MarkerLayer(
                             markers: [
@@ -1386,27 +1568,31 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
                                     point: _trajetDepart!,
                                     width: 50,
                                     height: 50,
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: Colors.green,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: AppColors.white,
-                                          width: 3,
-                                        ),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: AppColors.black
-                                                .withOpacity(0.3),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 2),
+                                    child: GestureDetector(
+                                      onTap: () =>
+                                          _showTrajetPointDetails('départ'),
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.green,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: AppColors.white,
+                                            width: 3,
                                           ),
-                                        ],
-                                      ),
-                                      child: const Icon(
-                                        Icons.location_on,
-                                        color: AppColors.white,
-                                        size: 28,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: AppColors.black
+                                                  .withOpacity(0.3),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: const Icon(
+                                          Icons.location_on,
+                                          color: AppColors.white,
+                                          size: 28,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -1415,27 +1601,31 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
                                     point: _trajetArrivee!,
                                     width: 50,
                                     height: 50,
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: Colors.red,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: AppColors.white,
-                                          width: 3,
-                                        ),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: AppColors.black
-                                                .withOpacity(0.3),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 2),
+                                    child: GestureDetector(
+                                      onTap: () =>
+                                          _showTrajetPointDetails('arrivée'),
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.red,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: AppColors.white,
+                                            width: 3,
                                           ),
-                                        ],
-                                      ),
-                                      child: const Icon(
-                                        Icons.flag,
-                                        color: AppColors.white,
-                                        size: 28,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: AppColors.black
+                                                  .withOpacity(0.3),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: const Icon(
+                                          Icons.flag,
+                                          color: AppColors.white,
+                                          size: 28,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -1583,7 +1773,6 @@ class _NearbyBusesScreenState extends State<NearbyBusesScreen> {
                                             _filteredBuses = [];
                                             _trajetDepart = null;
                                             _trajetArrivee = null;
-                                            _trajetPolyline = [];
                                           });
                                         },
                                         padding: EdgeInsets.zero,

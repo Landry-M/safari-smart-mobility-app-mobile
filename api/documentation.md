@@ -251,7 +251,7 @@ Response 200:
       "distance_totale": "27.00",
       "duree_estimee": "0",
       "statut": "actif",
-      "latitude_deprte": null,
+      "latitude_depart": null,
       "longitude_depart": null,
       "latitude_arrivee": null,
       "longitude_arrivee": null,
@@ -306,6 +306,10 @@ Response 200:
     "distance_totale": "27.00",
     "duree_estimee": "0",
     "statut": "actif",
+    "latitude_depart": null,
+    "longitude_depart": null,
+    "latitude_arrivee": null,
+    "longitude_arrivee": null,
     ...
   }
 }

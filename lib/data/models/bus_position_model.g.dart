@@ -62,59 +62,74 @@ const BusPositionSchema = CollectionSchema(
       name: r'heading',
       type: IsarType.double,
     ),
-    r'isFull': PropertySchema(
+    r'immatriculation': PropertySchema(
       id: 9,
+      name: r'immatriculation',
+      type: IsarType.string,
+    ),
+    r'isFull': PropertySchema(
+      id: 10,
       name: r'isFull',
       type: IsarType.bool,
     ),
     r'isSynced': PropertySchema(
-      id: 10,
+      id: 11,
       name: r'isSynced',
       type: IsarType.bool,
     ),
     r'latitude': PropertySchema(
-      id: 11,
+      id: 12,
       name: r'latitude',
       type: IsarType.double,
     ),
     r'longitude': PropertySchema(
-      id: 12,
+      id: 13,
       name: r'longitude',
       type: IsarType.double,
     ),
+    r'marque': PropertySchema(
+      id: 14,
+      name: r'marque',
+      type: IsarType.string,
+    ),
+    r'modele': PropertySchema(
+      id: 15,
+      name: r'modele',
+      type: IsarType.string,
+    ),
     r'occupancy': PropertySchema(
-      id: 13,
+      id: 16,
       name: r'occupancy',
       type: IsarType.long,
     ),
     r'occupancyPercentage': PropertySchema(
-      id: 14,
+      id: 17,
       name: r'occupancyPercentage',
       type: IsarType.double,
     ),
     r'routeId': PropertySchema(
-      id: 15,
+      id: 18,
       name: r'routeId',
       type: IsarType.string,
     ),
     r'routeName': PropertySchema(
-      id: 16,
+      id: 19,
       name: r'routeName',
       type: IsarType.string,
     ),
     r'speed': PropertySchema(
-      id: 17,
+      id: 20,
       name: r'speed',
       type: IsarType.double,
     ),
     r'status': PropertySchema(
-      id: 18,
+      id: 21,
       name: r'status',
       type: IsarType.string,
       enumMap: _BusPositionstatusEnumValueMap,
     ),
     r'timestamp': PropertySchema(
-      id: 19,
+      id: 22,
       name: r'timestamp',
       type: IsarType.dateTime,
     )
@@ -173,6 +188,24 @@ int _busPositionEstimateSize(
     }
   }
   {
+    final value = object.immatriculation;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.marque;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.modele;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
     final value = object.routeId;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
@@ -203,17 +236,20 @@ void _busPositionSerialize(
   writer.writeString(offsets[6], object.driverId);
   writer.writeString(offsets[7], object.driverName);
   writer.writeDouble(offsets[8], object.heading);
-  writer.writeBool(offsets[9], object.isFull);
-  writer.writeBool(offsets[10], object.isSynced);
-  writer.writeDouble(offsets[11], object.latitude);
-  writer.writeDouble(offsets[12], object.longitude);
-  writer.writeLong(offsets[13], object.occupancy);
-  writer.writeDouble(offsets[14], object.occupancyPercentage);
-  writer.writeString(offsets[15], object.routeId);
-  writer.writeString(offsets[16], object.routeName);
-  writer.writeDouble(offsets[17], object.speed);
-  writer.writeString(offsets[18], object.status.name);
-  writer.writeDateTime(offsets[19], object.timestamp);
+  writer.writeString(offsets[9], object.immatriculation);
+  writer.writeBool(offsets[10], object.isFull);
+  writer.writeBool(offsets[11], object.isSynced);
+  writer.writeDouble(offsets[12], object.latitude);
+  writer.writeDouble(offsets[13], object.longitude);
+  writer.writeString(offsets[14], object.marque);
+  writer.writeString(offsets[15], object.modele);
+  writer.writeLong(offsets[16], object.occupancy);
+  writer.writeDouble(offsets[17], object.occupancyPercentage);
+  writer.writeString(offsets[18], object.routeId);
+  writer.writeString(offsets[19], object.routeName);
+  writer.writeDouble(offsets[20], object.speed);
+  writer.writeString(offsets[21], object.status.name);
+  writer.writeDateTime(offsets[22], object.timestamp);
 }
 
 BusPosition _busPositionDeserialize(
@@ -231,20 +267,23 @@ BusPosition _busPositionDeserialize(
     driverId: reader.readStringOrNull(offsets[6]),
     driverName: reader.readStringOrNull(offsets[7]),
     heading: reader.readDoubleOrNull(offsets[8]),
-    isSynced: reader.readBoolOrNull(offsets[10]) ?? false,
-    latitude: reader.readDoubleOrNull(offsets[11]) ?? 0.0,
-    longitude: reader.readDoubleOrNull(offsets[12]) ?? 0.0,
-    occupancy: reader.readLongOrNull(offsets[13]),
-    routeId: reader.readStringOrNull(offsets[15]),
-    routeName: reader.readStringOrNull(offsets[16]),
-    speed: reader.readDoubleOrNull(offsets[17]),
+    immatriculation: reader.readStringOrNull(offsets[9]),
+    isSynced: reader.readBoolOrNull(offsets[11]) ?? false,
+    latitude: reader.readDoubleOrNull(offsets[12]) ?? 0.0,
+    longitude: reader.readDoubleOrNull(offsets[13]) ?? 0.0,
+    marque: reader.readStringOrNull(offsets[14]),
+    modele: reader.readStringOrNull(offsets[15]),
+    occupancy: reader.readLongOrNull(offsets[16]),
+    routeId: reader.readStringOrNull(offsets[18]),
+    routeName: reader.readStringOrNull(offsets[19]),
+    speed: reader.readDoubleOrNull(offsets[20]),
     status:
-        _BusPositionstatusValueEnumMap[reader.readStringOrNull(offsets[18])] ??
+        _BusPositionstatusValueEnumMap[reader.readStringOrNull(offsets[21])] ??
             BusStatus.active,
   );
   object.createdAt = reader.readDateTime(offsets[4]);
   object.id = id;
-  object.timestamp = reader.readDateTime(offsets[19]);
+  object.timestamp = reader.readDateTime(offsets[22]);
   return object;
 }
 
@@ -274,27 +313,33 @@ P _busPositionDeserializeProp<P>(
     case 8:
       return (reader.readDoubleOrNull(offset)) as P;
     case 9:
-      return (reader.readBool(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 10:
-      return (reader.readBoolOrNull(offset) ?? false) as P;
+      return (reader.readBool(offset)) as P;
     case 11:
-      return (reader.readDoubleOrNull(offset) ?? 0.0) as P;
+      return (reader.readBoolOrNull(offset) ?? false) as P;
     case 12:
       return (reader.readDoubleOrNull(offset) ?? 0.0) as P;
     case 13:
-      return (reader.readLongOrNull(offset)) as P;
+      return (reader.readDoubleOrNull(offset) ?? 0.0) as P;
     case 14:
-      return (reader.readDouble(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 15:
       return (reader.readStringOrNull(offset)) as P;
     case 16:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readLongOrNull(offset)) as P;
     case 17:
-      return (reader.readDoubleOrNull(offset)) as P;
+      return (reader.readDouble(offset)) as P;
     case 18:
+      return (reader.readStringOrNull(offset)) as P;
+    case 19:
+      return (reader.readStringOrNull(offset)) as P;
+    case 20:
+      return (reader.readDoubleOrNull(offset)) as P;
+    case 21:
       return (_BusPositionstatusValueEnumMap[reader.readStringOrNull(offset)] ??
           BusStatus.active) as P;
-    case 19:
+    case 22:
       return (reader.readDateTime(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1474,6 +1519,160 @@ extension BusPositionQueryFilter
     });
   }
 
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition>
+      immatriculationIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'immatriculation',
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition>
+      immatriculationIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'immatriculation',
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition>
+      immatriculationEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'immatriculation',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition>
+      immatriculationGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'immatriculation',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition>
+      immatriculationLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'immatriculation',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition>
+      immatriculationBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'immatriculation',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition>
+      immatriculationStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'immatriculation',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition>
+      immatriculationEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'immatriculation',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition>
+      immatriculationContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'immatriculation',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition>
+      immatriculationMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'immatriculation',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition>
+      immatriculationIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'immatriculation',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition>
+      immatriculationIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'immatriculation',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition> isFullEqualTo(
       bool value) {
     return QueryBuilder.apply(this, (query) {
@@ -1620,6 +1819,308 @@ extension BusPositionQueryFilter
         upper: upper,
         includeUpper: includeUpper,
         epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition> marqueIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'marque',
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition>
+      marqueIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'marque',
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition> marqueEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'marque',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition>
+      marqueGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'marque',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition> marqueLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'marque',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition> marqueBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'marque',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition>
+      marqueStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'marque',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition> marqueEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'marque',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition> marqueContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'marque',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition> marqueMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'marque',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition>
+      marqueIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'marque',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition>
+      marqueIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'marque',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition> modeleIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'modele',
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition>
+      modeleIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'modele',
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition> modeleEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'modele',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition>
+      modeleGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'modele',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition> modeleLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'modele',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition> modeleBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'modele',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition>
+      modeleStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'modele',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition> modeleEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'modele',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition> modeleContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'modele',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition> modeleMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'modele',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition>
+      modeleIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'modele',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterFilterCondition>
+      modeleIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'modele',
+        value: '',
       ));
     });
   }
@@ -2457,6 +2958,19 @@ extension BusPositionQuerySortBy
     });
   }
 
+  QueryBuilder<BusPosition, BusPosition, QAfterSortBy> sortByImmatriculation() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'immatriculation', Sort.asc);
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterSortBy>
+      sortByImmatriculationDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'immatriculation', Sort.desc);
+    });
+  }
+
   QueryBuilder<BusPosition, BusPosition, QAfterSortBy> sortByIsFull() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isFull', Sort.asc);
@@ -2502,6 +3016,30 @@ extension BusPositionQuerySortBy
   QueryBuilder<BusPosition, BusPosition, QAfterSortBy> sortByLongitudeDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'longitude', Sort.desc);
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterSortBy> sortByMarque() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'marque', Sort.asc);
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterSortBy> sortByMarqueDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'marque', Sort.desc);
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterSortBy> sortByModele() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'modele', Sort.asc);
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterSortBy> sortByModeleDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'modele', Sort.desc);
     });
   }
 
@@ -2714,6 +3252,19 @@ extension BusPositionQuerySortThenBy
     });
   }
 
+  QueryBuilder<BusPosition, BusPosition, QAfterSortBy> thenByImmatriculation() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'immatriculation', Sort.asc);
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterSortBy>
+      thenByImmatriculationDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'immatriculation', Sort.desc);
+    });
+  }
+
   QueryBuilder<BusPosition, BusPosition, QAfterSortBy> thenByIsFull() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isFull', Sort.asc);
@@ -2759,6 +3310,30 @@ extension BusPositionQuerySortThenBy
   QueryBuilder<BusPosition, BusPosition, QAfterSortBy> thenByLongitudeDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'longitude', Sort.desc);
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterSortBy> thenByMarque() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'marque', Sort.asc);
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterSortBy> thenByMarqueDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'marque', Sort.desc);
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterSortBy> thenByModele() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'modele', Sort.asc);
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QAfterSortBy> thenByModeleDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'modele', Sort.desc);
     });
   }
 
@@ -2909,6 +3484,14 @@ extension BusPositionQueryWhereDistinct
     });
   }
 
+  QueryBuilder<BusPosition, BusPosition, QDistinct> distinctByImmatriculation(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'immatriculation',
+          caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<BusPosition, BusPosition, QDistinct> distinctByIsFull() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'isFull');
@@ -2930,6 +3513,20 @@ extension BusPositionQueryWhereDistinct
   QueryBuilder<BusPosition, BusPosition, QDistinct> distinctByLongitude() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'longitude');
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QDistinct> distinctByMarque(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'marque', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<BusPosition, BusPosition, QDistinct> distinctByModele(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'modele', caseSensitive: caseSensitive);
     });
   }
 
@@ -3042,6 +3639,13 @@ extension BusPositionQueryProperty
     });
   }
 
+  QueryBuilder<BusPosition, String?, QQueryOperations>
+      immatriculationProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'immatriculation');
+    });
+  }
+
   QueryBuilder<BusPosition, bool, QQueryOperations> isFullProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'isFull');
@@ -3063,6 +3667,18 @@ extension BusPositionQueryProperty
   QueryBuilder<BusPosition, double, QQueryOperations> longitudeProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'longitude');
+    });
+  }
+
+  QueryBuilder<BusPosition, String?, QQueryOperations> marqueProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'marque');
+    });
+  }
+
+  QueryBuilder<BusPosition, String?, QQueryOperations> modeleProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'modele');
     });
   }
 

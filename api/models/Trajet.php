@@ -14,7 +14,7 @@ class Trajet {
     public $distance_totale;
     public $duree_estimee;
     public $statut;
-    public $latitude_deprte;
+    public $latitude_depart;
     public $longitude_depart;
     public $latitude_arrivee;
     public $longitude_arrivee;
@@ -81,7 +81,8 @@ class Trajet {
      * Récupérer les noms de lignes (pour dropdown)
      */
     public function getLignesNames() {
-        $query = "SELECT id, nom, code, distance_totale, duree_estimee 
+        $query = "SELECT id, nom, code, distance_totale, duree_estimee,
+                  latitude_depart, longitude_depart, latitude_arrivee, longitude_arrivee 
                   FROM " . $this->table_name . " 
                   WHERE statut = 'actif' 
                   ORDER BY nom ASC";

@@ -3,6 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/driver_session_service.dart';
+import '../../core/services/api_service.dart';
+import '../../core/services/database_service.dart';
+import '../../data/models/equipe_bord_model.dart';
+import '../../data/models/driver_session_model.dart';
+import '../../data/models/bus_model.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 
@@ -19,38 +24,30 @@ class _AuthDriverScreenState extends State<AuthDriverScreen> {
 
   // Contrôleurs pour chaque étape
   final _chauffeurMatriculeController = TextEditingController();
-  final _chauffeurPasswordController = TextEditingController();
+  final _chauffeurPinController = TextEditingController();
   final _receveurMatriculeController = TextEditingController();
-  final _receveurPasswordController = TextEditingController();
-  final _collecteurMatriculeController = TextEditingController();
-  final _collecteurPasswordController = TextEditingController();
+  final _receveurPinController = TextEditingController();
+  final _controleurMatriculeController = TextEditingController();
+  final _controleurPinController = TextEditingController();
+
+  final _apiService = ApiService();
+  final _dbService = DatabaseService();
+
+  // Stocker les données des membres authentifiés
+  Map<String, dynamic>? _chauffeurData;
+  Map<String, dynamic>? _receveurData;
+  Map<String, dynamic>? _controleurData;
 
   bool _isLoading = false;
-
-  // Identifiants fictifs pour les tests
-  final Map<String, Map<String, String>> _credentials = {
-    'chauffeur': {
-      'matricule': 'CH001',
-      'password': '123456',
-    },
-    'receveur': {
-      'matricule': 'RC001',
-      'password': '654321',
-    },
-    'collecteur': {
-      'matricule': 'CL001',
-      'password': '111111',
-    },
-  };
 
   @override
   void dispose() {
     _chauffeurMatriculeController.dispose();
-    _chauffeurPasswordController.dispose();
+    _chauffeurPinController.dispose();
     _receveurMatriculeController.dispose();
-    _receveurPasswordController.dispose();
-    _collecteurMatriculeController.dispose();
-    _collecteurPasswordController.dispose();
+    _receveurPinController.dispose();
+    _controleurMatriculeController.dispose();
+    _controleurPinController.dispose();
     super.dispose();
   }
 
@@ -59,69 +56,181 @@ class _AuthDriverScreenState extends State<AuthDriverScreen> {
 
     setState(() => _isLoading = true);
 
-    // Simuler un délai de validation
-    await Future.delayed(const Duration(seconds: 1));
-
     String matricule = '';
-    String password = '';
-    String role = '';
+    String pin = '';
+    String poste = '';
 
-    // Déterminer quel étape nous sommes
+    // Déterminer quelle étape nous sommes
     switch (_currentStep) {
       case 0:
         matricule = _chauffeurMatriculeController.text.trim();
-        password = _chauffeurPasswordController.text.trim();
-        role = 'chauffeur';
+        pin = _chauffeurPinController.text.trim();
+        poste = 'chauffeur';
         break;
       case 1:
         matricule = _receveurMatriculeController.text.trim();
-        password = _receveurPasswordController.text.trim();
-        role = 'receveur';
+        pin = _receveurPinController.text.trim();
+        poste = 'receveur';
         break;
       case 2:
-        matricule = _collecteurMatriculeController.text.trim();
-        password = _collecteurPasswordController.text.trim();
-        role = 'collecteur';
+        matricule = _controleurMatriculeController.text.trim();
+        pin = _controleurPinController.text.trim();
+        poste = 'controleur';
         break;
     }
 
-    // Valider les identifiants
-    if (matricule == _credentials[role]!['matricule'] &&
-        password == _credentials[role]!['password']) {
+    try {
+      // Authentifier via l'API
+      final result = await _apiService.authenticateEquipeBord(
+        matricule: matricule,
+        pin: pin,
+        poste: poste,
+      );
+
       setState(() => _isLoading = false);
 
-      // Si c'est la dernière étape, sauvegarder la session et naviguer vers home_driver
-      if (_currentStep == 2) {
-        // Sauvegarder la session chauffeur
-        final sessionService = DriverSessionService();
-        await sessionService.saveDriverSession(
-          chauffeurMatricule: _chauffeurMatriculeController.text.trim(),
-          receveurMatricule: _receveurMatriculeController.text.trim(),
-          collecteurMatricule: _collecteurMatriculeController.text.trim(),
-        );
+      if (result['success'] == true) {
+        // Stocker les données du membre authentifié
+        final memberData = result['data'];
+        switch (_currentStep) {
+          case 0:
+            _chauffeurData = memberData;
+            break;
+          case 1:
+            _receveurData = memberData;
+            break;
+          case 2:
+            _controleurData = memberData;
+            break;
+        }
 
-        if (mounted) {
-          context.go('/driver-home');
+        // Si c'est la dernière étape, sauvegarder tout en local
+        if (_currentStep == 2) {
+          await _saveDriverSessionLocally();
+
+          if (mounted) {
+            context.go('/driver-home');
+          }
+        } else {
+          // Sinon, passer à l'étape suivante
+          setState(() {
+            _currentStep++;
+            _formKey.currentState!.reset();
+          });
         }
       } else {
-        // Sinon, passer à l'étape suivante
-        setState(() {
-          _currentStep++;
-          _formKey.currentState!.reset();
-        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'Identifiants incorrects'),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
       }
-    } else {
+    } catch (e) {
       setState(() => _isLoading = false);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Identifiants incorrects pour le $role'),
+            content: Text('Erreur de connexion: $e'),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
           ),
         );
       }
+    }
+  }
+
+  /// Sauvegarder la session complète de l'équipe en local
+  Future<void> _saveDriverSessionLocally() async {
+    try {
+      // Préparer les membres de l'équipe
+      EquipeBord? chauffeur;
+      EquipeBord? receveur;
+      EquipeBord? controleur;
+
+      if (_chauffeurData != null) {
+        chauffeur = EquipeBord.fromApi(_chauffeurData!)
+          ..isCurrentSession = true
+          ..loginTimestamp = DateTime.now();
+      }
+
+      if (_receveurData != null) {
+        receveur = EquipeBord.fromApi(_receveurData!)
+          ..isCurrentSession = true
+          ..loginTimestamp = DateTime.now();
+      }
+
+      if (_controleurData != null) {
+        controleur = EquipeBord.fromApi(_controleurData!)
+          ..isCurrentSession = true
+          ..loginTimestamp = DateTime.now();
+      }
+
+      // Récupérer et sauvegarder les infos du bus depuis l'API
+      final busNumber = _chauffeurData?['bus_affecte'];
+      print('🚌 Bus affecté au chauffeur: $busNumber');
+      
+      if (busNumber != null && busNumber.isNotEmpty) {
+        try {
+          // Récupérer les infos complètes du bus depuis l'API
+          final busResult = await _apiService.getBusInfo(busNumber);
+          print('🚌 Réponse API getBusInfo: $busResult');
+          
+          if (busResult['success'] == true && busResult['data'] != null) {
+            // Créer et sauvegarder le bus dans Isar
+            final busData = busResult['data'];
+            final bus = Bus.fromApi(busData);
+            await _dbService.saveBus(bus);
+            print('✅ Bus sauvegardé dans Isar: ${bus.immatriculation} (N° ${bus.numero})');
+          } else {
+            print('⚠️ Impossible de récupérer les infos du bus depuis l\'API');
+          }
+        } catch (e) {
+          print('❌ Erreur lors de la récupération du bus: $e');
+          // Continuer même si le bus n'est pas récupéré
+        }
+      }
+
+      // Créer la session driver
+      final driverSession = DriverSession(
+        chauffeurMatricule: _chauffeurMatriculeController.text.trim(),
+        receveurMatricule: _receveurMatriculeController.text.trim(),
+        controleurMatricule: _controleurMatriculeController.text.trim(),
+        busNumber: busNumber,
+        route: null,
+        isActive: true,
+      );
+
+      // Sauvegarder tout de manière atomique
+      await _dbService.saveCompleteDriverSession(
+        chauffeur: chauffeur,
+        receveur: receveur,
+        controleur: controleur,
+        session: driverSession,
+      );
+      
+      print('✅ Session complète sauvegardée avec succès');
+      if (chauffeur != null) print('  - Chauffeur: ${chauffeur.nom}');
+      if (receveur != null) print('  - Receveur: ${receveur.nom}');
+      if (controleur != null) print('  - Contrôleur: ${controleur.nom}');
+
+      // 4. Sauvegarder aussi dans SharedPreferences (pour compatibilité)
+      final sessionService = DriverSessionService();
+      await sessionService.saveDriverSession(
+        chauffeurMatricule: _chauffeurMatriculeController.text.trim(),
+        receveurMatricule: _receveurMatriculeController.text.trim(),
+        collecteurMatricule: _controleurMatriculeController.text.trim(),
+        busNumber: _chauffeurData?['bus_affecte'] ?? 'BUS-225',
+      );
+      print('✅ Session sauvegardée dans SharedPreferences');
+
+    } catch (e) {
+      print('❌ Erreur lors de la sauvegarde de la session: $e');
+      // Ne pas bloquer la navigation même si la sauvegarde échoue
     }
   }
 
@@ -131,22 +240,22 @@ class _AuthDriverScreenState extends State<AuthDriverScreen> {
         'title': 'Authentification Chauffeur',
         'icon': Icons.person_outline,
         'matriculeController': _chauffeurMatriculeController,
-        'passwordController': _chauffeurPasswordController,
-        'matriculeHint': 'Ex: CH001',
+        'pinController': _chauffeurPinController,
+        'matriculeHint': 'Ex: EMP-2025-001',
       },
       {
         'title': 'Authentification Receveur',
         'icon': Icons.account_circle_outlined,
         'matriculeController': _receveurMatriculeController,
-        'passwordController': _receveurPasswordController,
-        'matriculeHint': 'Ex: RC001',
+        'pinController': _receveurPinController,
+        'matriculeHint': 'Ex: EMP-2025-008',
       },
       {
-        'title': 'Authentification Collecteur',
+        'title': 'Authentification Contrôleur',
         'icon': Icons.badge_outlined,
-        'matriculeController': _collecteurMatriculeController,
-        'passwordController': _collecteurPasswordController,
-        'matriculeHint': 'Ex: CL001',
+        'matriculeController': _controleurMatriculeController,
+        'pinController': _controleurPinController,
+        'matriculeHint': 'Ex: EMP-2025-015',
       },
     ];
 
@@ -215,11 +324,11 @@ class _AuthDriverScreenState extends State<AuthDriverScreen> {
               ),
               const SizedBox(height: 16),
               CustomTextField(
-                controller: data['passwordController'] as TextEditingController,
-                label: 'Mot de passe',
+                controller: data['pinController'] as TextEditingController,
+                label: 'Code PIN',
                 hintText: '6 chiffres',
                 prefixIcon: Icons.lock_outline,
-                obscureText: true,
+                obscureText: false,
                 keyboardType: TextInputType.number,
                 maxLength: 6,
                 inputFormatters: [
@@ -227,10 +336,10 @@ class _AuthDriverScreenState extends State<AuthDriverScreen> {
                 ],
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Veuillez entrer le mot de passe';
+                    return 'Veuillez entrer le code PIN';
                   }
                   if (value.length != 6) {
-                    return 'Le mot de passe doit contenir 6 chiffres';
+                    return 'Le code PIN doit contenir 6 chiffres';
                   }
                   return null;
                 },
