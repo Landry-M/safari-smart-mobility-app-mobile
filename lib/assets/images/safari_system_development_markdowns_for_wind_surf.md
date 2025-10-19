@@ -17,7 +17,7 @@ Application mobile destinée aux agents terrain (Chauffeur) et aux usagers :
 - State management : Provider (conforme à ton historique)
 - HTTP : `dio`
 - Cartographie : `flutter_map`
-- API KEY Google Map: `AIzaSyCokbp76WRQybewzj87ZwNeT6xdplTSyPA`
+- API KEY Google Map: "
 - QR scanning : `mobile_scanner`
 - Géoloc : `geolocator`
 - Notifications push : Firebase Cloud Messaging (FCM)
