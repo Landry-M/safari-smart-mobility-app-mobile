@@ -816,7 +816,6 @@ class _BusTicketOrderScreenState extends State<BusTicketOrderScreen> {
         print('📝 Appel API createBillet en cours...');
         final billetResponse = await apiService.createBillet(
           numeroBillet: ticketNumber,
-          qrCode: qrCode,
           trajetId: trajetId, // Utiliser le routeId du bus
           busId: widget.bus.busId,
           clientId: clientId,
@@ -878,7 +877,10 @@ class _BusTicketOrderScreenState extends State<BusTicketOrderScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur lors de l\'achat: $e'),
+            content: Text(
+              'Erreur lors de l\'achat: $e',
+              style: const TextStyle(color: AppColors.white),
+            ),
             backgroundColor: AppColors.error,
           ),
         );

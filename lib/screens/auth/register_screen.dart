@@ -58,7 +58,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(authProvider.errorMessage ?? 'Erreur d\'inscription'),
+          content: Text(
+            authProvider.errorMessage ?? 'Erreur d\'inscription',
+            style: const TextStyle(color: AppColors.white),
+          ),
           backgroundColor: AppColors.error,
         ),
       );

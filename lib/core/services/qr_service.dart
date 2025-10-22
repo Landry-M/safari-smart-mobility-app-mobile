@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'api_service.dart';
+import 'database_service.dart';
+import '../../data/models/scanned_ticket_model.dart';
 
 class QRService {
   static final QRService _instance = QRService._internal();
@@ -87,16 +90,40 @@ class QRService {
     return false;
   }
   
-  // Validate QR code format
+  // Validate QR code format: QR-numero_du_billet-XXXX
   bool isValidTicketQR(String qrCode) {
-    // Basic validation - should be customized based on your QR format
     if (qrCode.isEmpty) return false;
     
-    // Example: Check if QR code starts with expected prefix
-    // return qrCode.startsWith('SAFARI_TICKET_');
+    // Vérifier le format: QR-numero_du_billet-XXXX
+    // Exemple: QR-BT-2025-001234-ABC123
+    if (qrCode.startsWith('QR-')) {
+      final parts = qrCode.split('-');
+      // Doit avoir au moins 3 parties: QR, numero_billet, et code
+      return parts.length >= 3;
+    }
     
-    // For now, accept any non-empty string
+    // Accepter aussi les codes sans préfixe QR- pour rétrocompatibilité
     return qrCode.length >= 10;
+  }
+  
+  // Extraire le numéro de billet du QR code
+  String extractTicketNumber(String qrCode) {
+    // Format attendu: QR-numero_du_billet-XXXX
+    // Exemple: QR-BT-2025-001234-ABC123
+    
+    if (qrCode.startsWith('QR-')) {
+      final parts = qrCode.split('-');
+      if (parts.length >= 3) {
+        // Retirer le premier élément "QR" et le dernier code
+        // Reconstituer le numéro de billet (peut contenir des tirets)
+        parts.removeAt(0); // Enlever "QR"
+        parts.removeLast(); // Enlever le dernier code
+        return parts.join('-'); // BT-2025-001234
+      }
+    }
+    
+    // Si le format n'est pas reconnu, retourner le code tel quel
+    return qrCode;
   }
   
   // Parse ticket information from QR code
@@ -106,21 +133,15 @@ class QRService {
         return null;
       }
       
-      // Example parsing logic - customize based on your QR format
-      // This is a simple example assuming JSON format
+      // Extraire le numéro de billet
+      final ticketNumber = extractTicketNumber(qrCode);
       
-      // For demonstration, return basic info
       return {
-        'ticketId': qrCode,
+        'qrCode': qrCode,
+        'ticketNumber': ticketNumber,
         'scannedAt': DateTime.now().toIso8601String(),
         'isValid': true,
       };
-      
-      // In real implementation, you might:
-      // 1. Decode base64 if needed
-      // 2. Parse JSON
-      // 3. Validate signature/checksum
-      // 4. Extract ticket details
       
     } catch (e) {
       return null;
@@ -181,30 +202,47 @@ class QRService {
   }
   
   // Validate scanned QR against server
-  Future<Map<String, dynamic>?> validateQRWithServer(String qrCode) async {
+  Future<Map<String, dynamic>?> validateQRWithServer(String qrCode, {String? scannedBy}) async {
     try {
-      // This would typically make an API call to validate the QR code
-      // For now, return mock validation result
+      final apiService = ApiService();
+      final dbService = DatabaseService();
       
-      final ticketInfo = parseTicketQR(qrCode);
-      if (ticketInfo == null) {
+      // Extraire le numéro de billet du QR code
+      final ticketNumber = extractTicketNumber(qrCode);
+      print('🎫 QR Code: $qrCode');
+      print('🎫 Numéro de billet extrait: $ticketNumber');
+      
+      // Valider le billet via l'API en utilisant le numéro de billet
+      final result = await apiService.validateTicketByQR(ticketNumber, scannedBy: scannedBy);
+      
+      if (result['success'] == true && result['data'] != null) {
+        // Le billet est valide, sauvegarder dans Isar
+        final ticketData = result['data'];
+        final scannedTicket = ScannedTicket.fromApi(ticketData);
+        
+        // Ajouter les informations de scan
+        scannedTicket.scannedAt = DateTime.now();
+        scannedTicket.scannedBy = scannedBy;
+        scannedTicket.statutBillet = 'utilise';
+        
+        await dbService.saveScannedTicket(scannedTicket);
+        
+        print('✅ Billet scanné et sauvegardé: ${scannedTicket.numeroBillet}');
+        
+        return {
+          'isValid': true,
+          'ticketId': scannedTicket.numeroBillet,
+          'message': 'Billet validé avec succès',
+          'data': ticketData,
+        };
+      } else {
         return {
           'isValid': false,
-          'error': 'Format de QR code invalide',
+          'error': result['message'] ?? 'Billet non valide',
         };
       }
-      
-      // Mock validation logic
-      await Future.delayed(const Duration(milliseconds: 500)); // Simulate API call
-      
-      return {
-        'isValid': true,
-        'ticketId': ticketInfo['ticketId'],
-        'message': 'Billet valide',
-        'validatedAt': DateTime.now().toIso8601String(),
-      };
-      
     } catch (e) {
+      print('❌ Erreur lors de la validation du billet: $e');
       return {
         'isValid': false,
         'error': 'Erreur de validation: $e',

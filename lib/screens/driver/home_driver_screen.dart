@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/driver_session_service.dart';
-import '../../core/services/equipe_bord_service.dart';
 import '../../core/services/database_service.dart';
 import '../../core/services/api_service.dart';
+import '../../core/services/equipe_bord_service.dart';
 import '../../data/models/equipe_bord_model.dart';
 import '../../data/models/ticket_model.dart';
 import '../../data/models/bus_model.dart';
+import '../../providers/equipe_bord_provider.dart';
 import '../scanner/qr_scanner_screen.dart';
+import 'scanned_tickets_screen.dart';
 
 class HomeDriverScreen extends StatefulWidget {
   const HomeDriverScreen({super.key});
@@ -18,12 +21,12 @@ class HomeDriverScreen extends StatefulWidget {
   State<HomeDriverScreen> createState() => _HomeDriverScreenState();
 }
 
-class _HomeDriverScreenState extends State<HomeDriverScreen> {
+class _HomeDriverScreenState extends State<HomeDriverScreen> with WidgetsBindingObserver {
   int _currentIndex = 0;
   final _sessionService = DriverSessionService();
-  final _equipeBordService = EquipeBordService();
   final _dbService = DatabaseService();
   final _apiService = ApiService();
+  final _equipeBordService = EquipeBordService();
 
   // Informations de l'équipe (chargées depuis la session)
   Map<String, String> _teamInfo = {
@@ -48,141 +51,34 @@ class _HomeDriverScreenState extends State<HomeDriverScreen> {
     'passengers': 0,
     'revenue': '0',
     'ticketsSold': 0,
+    'ticketsScanned': 0,
   };
 
   @override
   void initState() {
     super.initState();
-    _loadDriverSession();
+    WidgetsBinding.instance.addObserver(this);
+    // Charger les données via le provider
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = Provider.of<EquipeBordProvider>(context, listen: false);
+      provider.loadActiveSession();
+      provider.loadTodayStats();
+    });
   }
 
-  Future<void> _loadDriverSession() async {
-    try {
-      final sessionData =
-          await _equipeBordService.getActiveSessionWithMembers();
-
-      if (sessionData != null) {
-        print('✅ Session trouvée, chargement des données...');
-        print('🚌 Bus dans sessionData: ${sessionData['bus']}');
-        setState(() {
-          _chauffeur = sessionData['chauffeur'] as EquipeBord?;
-          _receveur = sessionData['receveur'] as EquipeBord?;
-          _controleur = sessionData['controleur'] as EquipeBord?;
-          _bus = sessionData['bus'] as Bus?;
-          print('🚌 _bus après assignation: $_bus');
-
-          final session = sessionData['session'];
-          _teamInfo = {
-            'chauffeur': _chauffeur?.matricule ?? '',
-            'receveur': _receveur?.matricule ?? '',
-            'collecteur': _controleur?.matricule ?? '',
-            'busNumber': _bus?.immatriculation ?? session?.busNumber ?? 'N/A',
-            'route': session?.route ?? '',
-          };
-        });
-      } else {
-        print('⚠️ Aucune session active trouvée');
-        // Ne pas rediriger pour permettre de voir les statistiques à 0
-        // Si pas de session, afficher des valeurs par défaut
-        setState(() {
-          _teamInfo = {
-            'chauffeur': 'Non connecté',
-            'receveur': 'Non connecté',
-            'collecteur': 'Non connecté',
-            'busNumber': 'N/A',
-            'route': 'N/A',
-          };
-        });
-      }
-    } catch (e) {
-      print('❌ Erreur lors du chargement de la session: $e');
-      // Afficher un message d'erreur mais ne pas bloquer
-      setState(() {
-        _teamInfo = {
-          'chauffeur': 'Erreur',
-          'receveur': 'Erreur',
-          'collecteur': 'Erreur',
-          'busNumber': 'N/A',
-          'route': 'N/A',
-        };
-      });
-    }
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
-  /// Rafraîchir les données du bus depuis l'API
-  Future<void> _refreshBusData() async {
-    try {
-      // Récupérer la session active
-      final session = await _dbService.getActiveDriverSession();
-      if (session == null ||
-          session.busNumber == null ||
-          session.busNumber!.isEmpty) {
-        print('⚠️ Aucun bus dans la session active');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Aucun véhicule affecté à cette session'),
-              backgroundColor: AppColors.warning,
-              behavior: SnackBarBehavior.floating,
-              duration: Duration(seconds: 2),
-            ),
-          );
-        }
-        return;
-      }
-
-      print('🔄 Rafraîchissement des données du bus: ${session.busNumber}');
-
-      // Récupérer les infos à jour depuis l'API
-      final busResult = await _apiService.getBusInfo(session.busNumber!);
-
-      if (busResult['success'] == true && busResult['data'] != null) {
-        // Créer et sauvegarder le bus dans Isar
-        final busData = busResult['data'];
-        final bus = Bus.fromApi(busData);
-        await _dbService.saveBus(bus);
-
-        print(
-            '✅ Bus mis à jour dans Isar: ${bus.immatriculation} (N° ${bus.numero})');
-
-        // Recharger la session pour mettre à jour l'affichage
-        await _loadDriverSession();
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Véhicule ${bus.immatriculation} mis à jour'),
-              backgroundColor: AppColors.success,
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
-      } else {
-        print('⚠️ Impossible de récupérer les infos du bus depuis l\'API');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Impossible de récupérer les données du véhicule'),
-              backgroundColor: AppColors.error,
-              behavior: SnackBarBehavior.floating,
-              duration: Duration(seconds: 2),
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      print('❌ Erreur lors du rafraîchissement du bus: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur: $e'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Rafraîchir les stats quand l'app revient au premier plan
+    if (state == AppLifecycleState.resumed) {
+      final provider = Provider.of<EquipeBordProvider>(context, listen: false);
+      provider.loadTodayStats();
     }
   }
 
@@ -201,7 +97,12 @@ class _HomeDriverScreenState extends State<HomeDriverScreen> {
         expand: false,
         builder: (context, scrollController) => SingleChildScrollView(
           controller: scrollController,
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 24,
+            bottom: 24 + MediaQuery.of(context).padding.bottom,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -395,6 +296,23 @@ class _HomeDriverScreenState extends State<HomeDriverScreen> {
     }
   }
 
+  Future<void> _refreshBusData() async {
+    try {
+      final provider = Provider.of<EquipeBordProvider>(context, listen: false);
+      await provider.loadActiveSession();
+      await provider.loadTodayStats();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors du rafraîchissement: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
   Color _getColorForStatut(String statut) {
     switch (statut.toLowerCase()) {
       case 'actif':
@@ -414,9 +332,62 @@ class _HomeDriverScreenState extends State<HomeDriverScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Déconnexion'),
-        content:
-            const Text('Voulez-vous vraiment déconnecter toute l\'équipe ?'),
+        title: Row(
+          children: [
+            Icon(
+              Icons.warning_amber_rounded,
+              color: AppColors.warning,
+              size: 28,
+            ),
+            const SizedBox(width: 12),
+            const Text('Déconnexion'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Voulez-vous vraiment déconnecter toute l\'équipe ?',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.error.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: AppColors.error.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.delete_forever,
+                    color: AppColors.error,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Toutes les données stockées localement seront supprimées.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.error,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -477,7 +448,10 @@ class _HomeDriverScreenState extends State<HomeDriverScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur lors du scan: $e'),
+            content: Text(
+              'Erreur lors du scan: $e',
+              style: const TextStyle(color: AppColors.white),
+            ),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
           ),
@@ -783,7 +757,10 @@ class _HomeDriverScreenState extends State<HomeDriverScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Billet validé avec succès'),
+          content: Text(
+            'Billet validé avec succès',
+            style: TextStyle(color: AppColors.white),
+          ),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
         ),
@@ -791,7 +768,10 @@ class _HomeDriverScreenState extends State<HomeDriverScreen> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erreur lors de la validation: $e'),
+          content: Text(
+            'Erreur lors de la validation: $e',
+            style: const TextStyle(color: AppColors.white),
+          ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),
@@ -799,14 +779,412 @@ class _HomeDriverScreenState extends State<HomeDriverScreen> {
     }
   }
 
+  /// Afficher les arrêts de la ligne
+  Future<void> _showArrets() async {
+    if (_bus?.trajetId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Aucune ligne affectée au bus'),
+          backgroundColor: AppColors.warning,
+        ),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.75,
+        decoration: const BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
+        ),
+        child: Column(
+          children: [
+            // Handle bar
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.grey.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+
+            // Header
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryPurple.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.location_on,
+                      color: AppColors.primaryPurple,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Arrêts de la ligne',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        Text(
+                          _bus!.nomLigne ?? 'Ligne ${_bus!.trajetId}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+            ),
+
+            const Divider(height: 1),
+
+            // Liste des arrêts
+            Expanded(
+              child: FutureBuilder<Map<String, dynamic>>(
+                future: () async {
+                  // Debug: afficher les informations du bus
+                  print('🔍 DEBUG - Bus: ${_bus!.numero}');
+                  print('🔍 DEBUG - trajetId: ${_bus!.trajetId}');
+                  print('🔍 DEBUG - nomLigne: ${_bus!.nomLigne}');
+
+                  // Utiliser trajetId
+                  int? trajetId = _bus!.trajetId;
+
+                  if (trajetId == null) {
+                    print('❌ Erreur: Aucun trajetId valide trouvé');
+                    return {
+                      'success': false,
+                      'message':
+                          'Aucun identifiant de trajet trouvé pour ce bus',
+                      'data': [],
+                    };
+                  }
+
+                  print('📡 Appel API getArretsLigne avec trajetId=$trajetId');
+                  final result = await _apiService.getArretsLigne(trajetId);
+                  print('📥 Réponse API: $result');
+                  return result;
+                }(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          AppColors.primaryPurple,
+                        ),
+                      ),
+                    );
+                  }
+
+                  if (snapshot.hasError || !snapshot.hasData) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            size: 64,
+                            color: AppColors.error,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Erreur de chargement',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  final data = snapshot.data!;
+
+                  // Vérifier le succès et la présence de données
+                  if (data['success'] != true || data['data'] == null) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.location_off,
+                            size: 64,
+                            color: AppColors.textSecondary.withOpacity(0.5),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Aucun arrêt trouvé',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  // Vérifier que data['data'] est bien une List
+                  final arretsData = data['data'];
+                  if (arretsData is! List) {
+                    print(
+                        '❌ Erreur: data["data"] n\'est pas une List: ${arretsData.runtimeType}');
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            size: 64,
+                            color: AppColors.error,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Format de données invalide',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  final arrets = arretsData;
+
+                  // Vérifier que la liste n'est pas vide
+                  if (arrets.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.location_off,
+                            size: 64,
+                            color: AppColors.textSecondary.withOpacity(0.5),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Aucun arrêt trouvé pour cette ligne',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: EdgeInsets.only(
+                      left: 16,
+                      right: 16,
+                      top: 16,
+                      bottom: 16 + MediaQuery.of(context).padding.bottom,
+                    ),
+                    itemCount: arrets.length,
+                    itemBuilder: (context, index) {
+                      final arret = arrets[index];
+                      final isFirst = index == 0;
+                      final isLast = index == arrets.length - 1;
+
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Timeline
+                          Column(
+                            children: [
+                              Container(
+                                width: 24,
+                                height: 24,
+                                decoration: BoxDecoration(
+                                  color: isFirst || isLast
+                                      ? AppColors.primaryPurple
+                                      : AppColors.white,
+                                  border: Border.all(
+                                    color: AppColors.primaryPurple,
+                                    width: 2,
+                                  ),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: isFirst
+                                    ? const Icon(
+                                        Icons.location_on,
+                                        size: 14,
+                                        color: AppColors.white,
+                                      )
+                                    : isLast
+                                        ? const Icon(
+                                            Icons.flag,
+                                            size: 14,
+                                            color: AppColors.white,
+                                          )
+                                        : null,
+                              ),
+                              if (!isLast)
+                                Container(
+                                  width: 2,
+                                  height: 50,
+                                  color:
+                                      AppColors.primaryPurple.withOpacity(0.3),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(width: 16),
+
+                          // Arrêt info
+                          Expanded(
+                            child: Container(
+                              margin: EdgeInsets.only(
+                                bottom: isLast ? 0 : 16,
+                              ),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: isFirst || isLast
+                                    ? AppColors.primaryPurple.withOpacity(0.1)
+                                    : AppColors.lightGrey,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isFirst || isLast
+                                      ? AppColors.primaryPurple.withOpacity(0.3)
+                                      : Colors.transparent,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          arret['nom'] ?? 'Arrêt ${index + 1}',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.textPrimary,
+                                          ),
+                                        ),
+                                      ),
+                                      if (isFirst)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.success,
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                          ),
+                                          child: const Text(
+                                            'Départ',
+                                            style: TextStyle(
+                                              color: AppColors.white,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      if (isLast)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.error,
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                          ),
+                                          child: const Text(
+                                            'Arrivée',
+                                            style: TextStyle(
+                                              color: AppColors.white,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  if (arret['temps_arret'] != null) ...[
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.timer_outlined,
+                                          size: 14,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Temps d\'arrêt: ${arret['temps_arret']} min',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildStatCard({
     required IconData icon,
     required String label,
     required String value,
     required Color color,
+    bool isClickable = false,
   }) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(12),
@@ -820,16 +1198,28 @@ class _HomeDriverScreenState extends State<HomeDriverScreen> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: color, size: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              if (isClickable)
+                Icon(
+                  Icons.touch_app,
+                  size: 16,
+                  color: AppColors.textSecondary.withOpacity(0.5),
+                ),
+            ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text(
             value,
             style: const TextStyle(
@@ -838,14 +1228,37 @@ class _HomeDriverScreenState extends State<HomeDriverScreen> {
               color: AppColors.textPrimary,
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-            ),
+          const SizedBox(height: 2),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+              if (isClickable)
+                Icon(
+                  Icons.arrow_forward_ios,
+                  size: 12,
+                  color: AppColors.textSecondary.withOpacity(0.5),
+                ),
+            ],
           ),
+          if (isClickable) ...[
+            const SizedBox(height: 2),
+            Text(
+              'Appuyez pour consulter',
+              style: TextStyle(
+                fontSize: 9,
+                color: color.withValues(alpha: 0.7),
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -954,7 +1367,12 @@ class _HomeDriverScreenState extends State<HomeDriverScreen> {
         expand: false,
         builder: (context, scrollController) => SingleChildScrollView(
           controller: scrollController,
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 24,
+            bottom: 24 + MediaQuery.of(context).padding.bottom,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1077,13 +1495,14 @@ class _HomeDriverScreenState extends State<HomeDriverScreen> {
                 ),
               if (_bus!.kilometrage != null) const Divider(height: 32),
 
-              if (_bus!.ligneAffectee != null)
+              if (_bus!.nomLigne != null || _bus!.trajetId != null)
                 _buildDetailRow(
                   icon: Icons.route,
                   label: 'Ligne affectée',
-                  value: _bus!.ligneAffectee!,
+                  value: _bus!.nomLigne ?? 'Ligne ${_bus!.trajetId}',
                 ),
-              if (_bus!.ligneAffectee != null) const Divider(height: 32),
+              if (_bus!.nomLigne != null || _bus!.trajetId != null)
+                const Divider(height: 32),
 
               // Modules installés
               if (_bus!.modules != null && _bus!.modules!.isNotEmpty) ...[
@@ -1531,13 +1950,24 @@ class _HomeDriverScreenState extends State<HomeDriverScreen> {
                           ),
                         ],
                         const SizedBox(height: 4),
-                        Text(
-                          _teamInfo['route']!,
-                          style: const TextStyle(
-                            color: AppColors.white,
-                            fontSize: 14,
+                        // Text(
+                        //   _teamInfo['route']!,
+                        //   style: const TextStyle(
+                        //     color: AppColors.white,
+                        //     fontSize: 14,
+                        //   ),
+                        // ),
+                        if (_bus?.nomLigne != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            _bus!.nomLigne!,
+                            style: const TextStyle(
+                              color: AppColors.white,
+                              fontSize: 11,
+                              fontStyle: FontStyle.italic,
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ),
@@ -1580,11 +2010,22 @@ class _HomeDriverScreenState extends State<HomeDriverScreen> {
                   value: _todayStats['passengers'].toString(),
                   color: AppColors.primaryOrange,
                 ),
-                _buildStatCard(
-                  icon: Icons.confirmation_number,
-                  label: 'Billets vendus',
-                  value: _todayStats['ticketsSold'].toString(),
-                  color: AppColors.success,
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ScannedTicketsScreen(),
+                      ),
+                    );
+                  },
+                  child: _buildStatCard(
+                    icon: Icons.qr_code_scanner,
+                    label: 'Billets scannés',
+                    value: _todayStats['ticketsScanned'].toString(),
+                    color: AppColors.success,
+                    isClickable: true,
+                  ),
                 ),
                 _buildStatCard(
                   icon: Icons.attach_money,
@@ -1596,6 +2037,83 @@ class _HomeDriverScreenState extends State<HomeDriverScreen> {
             ),
 
             const SizedBox(height: 24),
+
+            // Carte pour consulter les arrêts de la ligne
+            if (_bus != null)
+              GestureDetector(
+                onTap: _showArrets,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.primaryPurple.withOpacity(0.8),
+                        AppColors.primaryPurple,
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primaryPurple.withOpacity(0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.location_on,
+                          color: AppColors.white,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Consulter les arrêts',
+                              style: TextStyle(
+                                color: AppColors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _bus!.nomLigne ??
+                                  (_bus!.trajetId != null
+                                      ? 'Ligne ${_bus!.trajetId}'
+                                      : 'Voir les arrêts du trajet'),
+                              style: TextStyle(
+                                color: AppColors.white.withOpacity(0.9),
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        color: AppColors.white,
+                        size: 18,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            if (_bus != null) const SizedBox(height: 24),
 
             // Actions rapides
             // const Text(
@@ -1796,61 +2314,87 @@ class _HomeDriverScreenState extends State<HomeDriverScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.white,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        title: const Text(
-          'Espace Chauffeur',
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.bold,
+    return Consumer<EquipeBordProvider>(
+      builder: (context, provider, child) {
+        // Mettre à jour les variables locales avec les données du Provider
+        _chauffeur = provider.chauffeur;
+        _receveur = provider.receveur;
+        _controleur = provider.controleur;
+        _bus = provider.bus;
+        _todayStats.addAll(provider.todayStats);
+
+        // Mettre à jour _teamInfo
+        _teamInfo['chauffeur'] = _chauffeur?.matricule ?? '';
+        _teamInfo['receveur'] = _receveur?.matricule ?? '';
+        _teamInfo['collecteur'] = _controleur?.matricule ?? '';
+        _teamInfo['busNumber'] = _bus?.numero ?? '';
+        _teamInfo['route'] = _bus?.nomLigne ?? '';
+
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          appBar: AppBar(
+            backgroundColor: AppColors.white,
+            elevation: 0,
+            automaticallyImplyLeading: false,
+            title: const Text(
+              'Espace de bord',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.logout, color: AppColors.error),
+                onPressed: _handleLogout,
+              ),
+            ],
           ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: AppColors.error),
-            onPressed: _handleLogout,
+          body: IndexedStack(
+            index: _currentIndex,
+            children: [
+              _buildHomeTab(),
+              _buildTeamTab(),
+            ],
           ),
-        ],
-      ),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: [
-          _buildHomeTab(),
-          _buildTeamTab(),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _scanClientQRCode,
-        backgroundColor: AppColors.primaryPurple,
-        icon: const Icon(Icons.qr_code_scanner, color: AppColors.white),
-        label: const Text(
-          'Scanner Billet',
-          style: TextStyle(color: AppColors.white, fontWeight: FontWeight.bold),
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: AppColors.white,
-        selectedItemColor: AppColors.primaryPurple,
-        unselectedItemColor: AppColors.grey,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Accueil',
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: _scanClientQRCode,
+            backgroundColor: AppColors.primaryPurple,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: const BorderSide(
+                color: AppColors.white,
+                width: 1,
+              ),
+            ),
+            icon: const Icon(Icons.qr_code_scanner, color: AppColors.white),
+            label: const Text(
+              'Scanner un Billet',
+              style: TextStyle(
+                  color: AppColors.white, fontWeight: FontWeight.bold),
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.group),
-            label: 'Équipe',
+          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+          bottomNavigationBar: BottomNavigationBar(
+            currentIndex: _currentIndex,
+            onTap: (index) => setState(() => _currentIndex = index),
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: AppColors.white,
+            selectedItemColor: AppColors.primaryPurple,
+            unselectedItemColor: AppColors.grey,
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home),
+                label: 'Accueil',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.group),
+                label: 'Équipe',
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

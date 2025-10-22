@@ -229,7 +229,10 @@ class _GamifiedRegisterScreenState extends State<GamifiedRegisterScreen>
   void _showErrorMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(
+          message,
+          style: const TextStyle(color: AppColors.white),
+        ),
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
       ),
@@ -316,7 +319,10 @@ class _GamifiedRegisterScreenState extends State<GamifiedRegisterScreen>
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('✅ Localisation activée avec succès !'),
+              content: Text(
+                '✅ Localisation activée avec succès !',
+                style: TextStyle(color: AppColors.white),
+              ),
               backgroundColor: AppColors.success,
               behavior: SnackBarBehavior.floating,
             ),

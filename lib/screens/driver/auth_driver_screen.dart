@@ -92,6 +92,72 @@ class _AuthDriverScreenState extends State<AuthDriverScreen> {
       if (result['success'] == true) {
         // Stocker les données du membre authentifié
         final memberData = result['data'];
+
+        // Vérifier la concordance du bus_affecte
+        if (_currentStep > 0) {
+          final chauffeurBus = _chauffeurData?['bus_affecte'];
+          final membreBus = memberData['bus_affecte'];
+          final posteNom = _currentStep == 1 ? 'receveur' : 'contrôleur';
+
+          // Si les bus ne correspondent pas, afficher une erreur
+          if (chauffeurBus != null &&
+              membreBus != null &&
+              chauffeurBus != membreBus) {
+            setState(() => _isLoading = false);
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.error_outline,
+                              color: AppColors.white, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Bus incompatible',
+                              style: const TextStyle(
+                                color: AppColors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Ce $posteNom est affecté au bus $membreBus alors que le chauffeur est affecté au bus $chauffeurBus.',
+                        style: const TextStyle(color: AppColors.white),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Tous les membres de l\'équipe doivent être affectés au même bus.',
+                        style: TextStyle(
+                          color: AppColors.white.withOpacity(0.9),
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                  backgroundColor: AppColors.error,
+                  behavior: SnackBarBehavior.floating,
+                  duration: const Duration(seconds: 6),
+                  action: SnackBarAction(
+                    label: 'OK',
+                    textColor: AppColors.white,
+                    onPressed: () {},
+                  ),
+                ),
+              );
+            }
+            return;
+          }
+        }
+
         switch (_currentStep) {
           case 0:
             _chauffeurData = memberData;
@@ -104,8 +170,11 @@ class _AuthDriverScreenState extends State<AuthDriverScreen> {
             break;
         }
 
-        // Si c'est la dernière étape, sauvegarder tout en local
+        // Si c'est la dernière étape, synchroniser le bus et sauvegarder en local
         if (_currentStep == 2) {
+          // Synchroniser le bus_affecte pour tous les membres de l'équipe
+          await _syncBusAffecteForTeam();
+
           await _saveDriverSessionLocally();
 
           if (mounted) {
@@ -122,7 +191,10 @@ class _AuthDriverScreenState extends State<AuthDriverScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(result['message'] ?? 'Identifiants incorrects'),
+              content: Text(
+                result['message'] ?? 'Identifiants incorrects',
+                style: const TextStyle(color: AppColors.white),
+              ),
               backgroundColor: AppColors.error,
               behavior: SnackBarBehavior.floating,
             ),
@@ -135,12 +207,65 @@ class _AuthDriverScreenState extends State<AuthDriverScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur de connexion: $e'),
+            content: Text(
+              'Erreur de connexion: $e',
+              style: const TextStyle(color: AppColors.white),
+            ),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
           ),
         );
       }
+    }
+  }
+
+  /// Synchroniser le bus_affecte pour tous les membres de l'équipe
+  /// S'assure que tous les membres ont le même bus_affecte que le chauffeur
+  Future<void> _syncBusAffecteForTeam() async {
+    try {
+      final busNumber = _chauffeurData?['bus_affecte'];
+      if (busNumber == null || busNumber.isEmpty) {
+        print('⚠️ Aucun bus affecté au chauffeur');
+        return;
+      }
+
+      print('🔄 Synchronisation du bus $busNumber pour toute l\'équipe...');
+
+      final result = await _apiService.syncBusAffecteEquipe(
+        chauffeurMatricule: _chauffeurMatriculeController.text.trim(),
+        receveurMatricule: _receveurMatriculeController.text.trim(),
+        controleurMatricule: _controleurMatriculeController.text.trim(),
+        busNumero: busNumber,
+      );
+
+      if (result['success'] == true) {
+        print('✅ Bus synchronisé avec succès pour tous les membres');
+        // Mettre à jour les données locales avec le bus synchronisé
+        if (_receveurData != null) {
+          _receveurData!['bus_affecte'] = busNumber;
+        }
+        if (_controleurData != null) {
+          _controleurData!['bus_affecte'] = busNumber;
+        }
+      } else {
+        print('⚠️ Erreur lors de la synchronisation: ${result['message']}');
+        // Continuer quand même, mais afficher un avertissement
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Avertissement: ${result['message']}',
+                style: const TextStyle(color: AppColors.white),
+              ),
+              backgroundColor: AppColors.warning,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ Erreur lors de la synchronisation du bus: $e');
+      // Ne pas bloquer la connexion même si la synchronisation échoue
     }
   }
 
@@ -173,19 +298,28 @@ class _AuthDriverScreenState extends State<AuthDriverScreen> {
       // Récupérer et sauvegarder les infos du bus depuis l'API
       final busNumber = _chauffeurData?['bus_affecte'];
       print('🚌 Bus affecté au chauffeur: $busNumber');
-      
+
       if (busNumber != null && busNumber.isNotEmpty) {
         try {
           // Récupérer les infos complètes du bus depuis l'API
           final busResult = await _apiService.getBusInfo(busNumber);
           print('🚌 Réponse API getBusInfo: $busResult');
-          
+
           if (busResult['success'] == true && busResult['data'] != null) {
             // Créer et sauvegarder le bus dans Isar
             final busData = busResult['data'];
+            print('📊 Données brutes du bus depuis l\'API:');
+            print('  - trajet_id: ${busData['trajet_id']}');
+            print('  - nom_ligne: ${busData['nom_ligne']}');
+
             final bus = Bus.fromApi(busData);
+            print('📊 Bus créé depuis API:');
+            print('  - trajetId: ${bus.trajetId}');
+            print('  - nomLigne: ${bus.nomLigne}');
+
             await _dbService.saveBus(bus);
-            print('✅ Bus sauvegardé dans Isar: ${bus.immatriculation} (N° ${bus.numero})');
+            print(
+                '✅ Bus sauvegardé dans Isar: ${bus.immatriculation} (N° ${bus.numero})');
           } else {
             print('⚠️ Impossible de récupérer les infos du bus depuis l\'API');
           }
@@ -212,7 +346,7 @@ class _AuthDriverScreenState extends State<AuthDriverScreen> {
         controleur: controleur,
         session: driverSession,
       );
-      
+
       print('✅ Session complète sauvegardée avec succès');
       if (chauffeur != null) print('  - Chauffeur: ${chauffeur.nom}');
       if (receveur != null) print('  - Receveur: ${receveur.nom}');
@@ -227,7 +361,6 @@ class _AuthDriverScreenState extends State<AuthDriverScreen> {
         busNumber: _chauffeurData?['bus_affecte'] ?? 'BUS-225',
       );
       print('✅ Session sauvegardée dans SharedPreferences');
-
     } catch (e) {
       print('❌ Erreur lors de la sauvegarde de la session: $e');
       // Ne pas bloquer la navigation même si la sauvegarde échoue

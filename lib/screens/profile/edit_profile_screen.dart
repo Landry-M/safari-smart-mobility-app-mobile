@@ -54,7 +54,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Erreur: Utilisateur non connecté'),
+            content: Text(
+              'Erreur: Utilisateur non connecté',
+              style: TextStyle(color: AppColors.white),
+            ),
             backgroundColor: AppColors.error,
           ),
         );
@@ -79,7 +82,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Profil mis à jour avec succès'),
+            content: Text(
+              'Profil mis à jour avec succès',
+              style: TextStyle(color: AppColors.white),
+            ),
             backgroundColor: AppColors.success,
           ),
         );
@@ -89,7 +95,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur: $e'),
+            content: Text(
+              'Erreur: $e',
+              style: const TextStyle(color: AppColors.white),
+            ),
             backgroundColor: AppColors.error,
           ),
         );

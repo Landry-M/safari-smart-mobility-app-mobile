@@ -618,7 +618,10 @@ class _TicketsTabState extends State<_TicketsTab> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur de chargement: $e'),
+            content: Text(
+              'Erreur de chargement: $e',
+              style: const TextStyle(color: AppColors.white),
+            ),
             backgroundColor: AppColors.error,
           ),
         );
@@ -964,7 +967,11 @@ class _TicketsTabState extends State<_TicketsTab> {
 
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
+                padding: EdgeInsets.only(
+                  left: 24,
+                  right: 24,
+                  bottom: 24 + MediaQuery.of(context).padding.bottom,
+                ),
                 child: Column(
                   children: [
                     // Status badge

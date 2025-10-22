@@ -52,49 +52,59 @@ const BusSchema = CollectionSchema(
       name: r'latitude',
       type: IsarType.double,
     ),
-    r'ligneAffectee': PropertySchema(
-      id: 7,
-      name: r'ligneAffectee',
-      type: IsarType.string,
-    ),
     r'longitude': PropertySchema(
-      id: 8,
+      id: 7,
       name: r'longitude',
       type: IsarType.double,
     ),
     r'marque': PropertySchema(
-      id: 9,
+      id: 8,
       name: r'marque',
       type: IsarType.string,
     ),
     r'modele': PropertySchema(
-      id: 10,
+      id: 9,
       name: r'modele',
       type: IsarType.string,
     ),
     r'modules': PropertySchema(
-      id: 11,
+      id: 10,
       name: r'modules',
       type: IsarType.string,
     ),
-    r'notes': PropertySchema(
+    r'mysqlId': PropertySchema(
+      id: 11,
+      name: r'mysqlId',
+      type: IsarType.long,
+    ),
+    r'nomLigne': PropertySchema(
       id: 12,
+      name: r'nomLigne',
+      type: IsarType.string,
+    ),
+    r'notes': PropertySchema(
+      id: 13,
       name: r'notes',
       type: IsarType.string,
     ),
     r'numero': PropertySchema(
-      id: 13,
+      id: 14,
       name: r'numero',
       type: IsarType.string,
     ),
     r'statut': PropertySchema(
-      id: 14,
+      id: 15,
       name: r'statut',
       type: IsarType.string,
       enumMap: _BusstatutEnumValueMap,
     ),
+    r'trajetId': PropertySchema(
+      id: 16,
+      name: r'trajetId',
+      type: IsarType.long,
+    ),
     r'updatedAt': PropertySchema(
-      id: 15,
+      id: 17,
       name: r'updatedAt',
       type: IsarType.dateTime,
     )
@@ -135,12 +145,6 @@ int _busEstimateSize(
   var bytesCount = offsets.last;
   bytesCount += 3 + object.immatriculation.length * 3;
   {
-    final value = object.ligneAffectee;
-    if (value != null) {
-      bytesCount += 3 + value.length * 3;
-    }
-  }
-  {
     final value = object.marque;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
@@ -154,6 +158,12 @@ int _busEstimateSize(
   }
   {
     final value = object.modules;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.nomLigne;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
     }
@@ -182,15 +192,17 @@ void _busSerialize(
   writer.writeString(offsets[4], object.immatriculation);
   writer.writeLong(offsets[5], object.kilometrage);
   writer.writeDouble(offsets[6], object.latitude);
-  writer.writeString(offsets[7], object.ligneAffectee);
-  writer.writeDouble(offsets[8], object.longitude);
-  writer.writeString(offsets[9], object.marque);
-  writer.writeString(offsets[10], object.modele);
-  writer.writeString(offsets[11], object.modules);
-  writer.writeString(offsets[12], object.notes);
-  writer.writeString(offsets[13], object.numero);
-  writer.writeString(offsets[14], object.statut.name);
-  writer.writeDateTime(offsets[15], object.updatedAt);
+  writer.writeDouble(offsets[7], object.longitude);
+  writer.writeString(offsets[8], object.marque);
+  writer.writeString(offsets[9], object.modele);
+  writer.writeString(offsets[10], object.modules);
+  writer.writeLong(offsets[11], object.mysqlId);
+  writer.writeString(offsets[12], object.nomLigne);
+  writer.writeString(offsets[13], object.notes);
+  writer.writeString(offsets[14], object.numero);
+  writer.writeString(offsets[15], object.statut.name);
+  writer.writeLong(offsets[16], object.trajetId);
+  writer.writeDateTime(offsets[17], object.updatedAt);
 }
 
 Bus _busDeserialize(
@@ -206,19 +218,21 @@ Bus _busDeserialize(
     immatriculation: reader.readStringOrNull(offsets[4]) ?? '',
     kilometrage: reader.readLongOrNull(offsets[5]),
     latitude: reader.readDoubleOrNull(offsets[6]),
-    ligneAffectee: reader.readStringOrNull(offsets[7]),
-    longitude: reader.readDoubleOrNull(offsets[8]),
-    marque: reader.readStringOrNull(offsets[9]),
-    modele: reader.readStringOrNull(offsets[10]),
-    modules: reader.readStringOrNull(offsets[11]),
-    notes: reader.readStringOrNull(offsets[12]),
-    numero: reader.readStringOrNull(offsets[13]) ?? '',
-    statut: _BusstatutValueEnumMap[reader.readStringOrNull(offsets[14])] ??
+    longitude: reader.readDoubleOrNull(offsets[7]),
+    marque: reader.readStringOrNull(offsets[8]),
+    modele: reader.readStringOrNull(offsets[9]),
+    modules: reader.readStringOrNull(offsets[10]),
+    mysqlId: reader.readLongOrNull(offsets[11]),
+    nomLigne: reader.readStringOrNull(offsets[12]),
+    notes: reader.readStringOrNull(offsets[13]),
+    numero: reader.readStringOrNull(offsets[14]) ?? '',
+    statut: _BusstatutValueEnumMap[reader.readStringOrNull(offsets[15])] ??
         BusStatut.actif,
+    trajetId: reader.readLongOrNull(offsets[16]),
   );
   object.createdAt = reader.readDateTime(offsets[2]);
   object.id = id;
-  object.updatedAt = reader.readDateTime(offsets[15]);
+  object.updatedAt = reader.readDateTime(offsets[17]);
   return object;
 }
 
@@ -244,23 +258,27 @@ P _busDeserializeProp<P>(
     case 6:
       return (reader.readDoubleOrNull(offset)) as P;
     case 7:
-      return (reader.readStringOrNull(offset)) as P;
-    case 8:
       return (reader.readDoubleOrNull(offset)) as P;
+    case 8:
+      return (reader.readStringOrNull(offset)) as P;
     case 9:
       return (reader.readStringOrNull(offset)) as P;
     case 10:
       return (reader.readStringOrNull(offset)) as P;
     case 11:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readLongOrNull(offset)) as P;
     case 12:
       return (reader.readStringOrNull(offset)) as P;
     case 13:
-      return (reader.readStringOrNull(offset) ?? '') as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 14:
+      return (reader.readStringOrNull(offset) ?? '') as P;
+    case 15:
       return (_BusstatutValueEnumMap[reader.readStringOrNull(offset)] ??
           BusStatut.actif) as P;
-    case 15:
+    case 16:
+      return (reader.readLongOrNull(offset)) as P;
+    case 17:
       return (reader.readDateTime(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1051,152 +1069,6 @@ extension BusQueryFilter on QueryBuilder<Bus, Bus, QFilterCondition> {
     });
   }
 
-  QueryBuilder<Bus, Bus, QAfterFilterCondition> ligneAffecteeIsNull() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNull(
-        property: r'ligneAffectee',
-      ));
-    });
-  }
-
-  QueryBuilder<Bus, Bus, QAfterFilterCondition> ligneAffecteeIsNotNull() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNotNull(
-        property: r'ligneAffectee',
-      ));
-    });
-  }
-
-  QueryBuilder<Bus, Bus, QAfterFilterCondition> ligneAffecteeEqualTo(
-    String? value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'ligneAffectee',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Bus, Bus, QAfterFilterCondition> ligneAffecteeGreaterThan(
-    String? value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'ligneAffectee',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Bus, Bus, QAfterFilterCondition> ligneAffecteeLessThan(
-    String? value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'ligneAffectee',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Bus, Bus, QAfterFilterCondition> ligneAffecteeBetween(
-    String? lower,
-    String? upper, {
-    bool includeLower = true,
-    bool includeUpper = true,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'ligneAffectee',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Bus, Bus, QAfterFilterCondition> ligneAffecteeStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'ligneAffectee',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Bus, Bus, QAfterFilterCondition> ligneAffecteeEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'ligneAffectee',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Bus, Bus, QAfterFilterCondition> ligneAffecteeContains(
-      String value,
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'ligneAffectee',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Bus, Bus, QAfterFilterCondition> ligneAffecteeMatches(
-      String pattern,
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'ligneAffectee',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Bus, Bus, QAfterFilterCondition> ligneAffecteeIsEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'ligneAffectee',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<Bus, Bus, QAfterFilterCondition> ligneAffecteeIsNotEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'ligneAffectee',
-        value: '',
-      ));
-    });
-  }
-
   QueryBuilder<Bus, Bus, QAfterFilterCondition> longitudeIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -1707,6 +1579,218 @@ extension BusQueryFilter on QueryBuilder<Bus, Bus, QFilterCondition> {
     });
   }
 
+  QueryBuilder<Bus, Bus, QAfterFilterCondition> mysqlIdIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'mysqlId',
+      ));
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterFilterCondition> mysqlIdIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'mysqlId',
+      ));
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterFilterCondition> mysqlIdEqualTo(int? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'mysqlId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterFilterCondition> mysqlIdGreaterThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'mysqlId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterFilterCondition> mysqlIdLessThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'mysqlId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterFilterCondition> mysqlIdBetween(
+    int? lower,
+    int? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'mysqlId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterFilterCondition> nomLigneIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'nomLigne',
+      ));
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterFilterCondition> nomLigneIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'nomLigne',
+      ));
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterFilterCondition> nomLigneEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'nomLigne',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterFilterCondition> nomLigneGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'nomLigne',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterFilterCondition> nomLigneLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'nomLigne',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterFilterCondition> nomLigneBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'nomLigne',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterFilterCondition> nomLigneStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'nomLigne',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterFilterCondition> nomLigneEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'nomLigne',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterFilterCondition> nomLigneContains(String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'nomLigne',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterFilterCondition> nomLigneMatches(String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'nomLigne',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterFilterCondition> nomLigneIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'nomLigne',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterFilterCondition> nomLigneIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'nomLigne',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<Bus, Bus, QAfterFilterCondition> notesIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -2107,6 +2191,74 @@ extension BusQueryFilter on QueryBuilder<Bus, Bus, QFilterCondition> {
     });
   }
 
+  QueryBuilder<Bus, Bus, QAfterFilterCondition> trajetIdIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'trajetId',
+      ));
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterFilterCondition> trajetIdIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'trajetId',
+      ));
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterFilterCondition> trajetIdEqualTo(int? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'trajetId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterFilterCondition> trajetIdGreaterThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'trajetId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterFilterCondition> trajetIdLessThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'trajetId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterFilterCondition> trajetIdBetween(
+    int? lower,
+    int? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'trajetId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
   QueryBuilder<Bus, Bus, QAfterFilterCondition> updatedAtEqualTo(
       DateTime value) {
     return QueryBuilder.apply(this, (query) {
@@ -2250,18 +2402,6 @@ extension BusQuerySortBy on QueryBuilder<Bus, Bus, QSortBy> {
     });
   }
 
-  QueryBuilder<Bus, Bus, QAfterSortBy> sortByLigneAffectee() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'ligneAffectee', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Bus, Bus, QAfterSortBy> sortByLigneAffecteeDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'ligneAffectee', Sort.desc);
-    });
-  }
-
   QueryBuilder<Bus, Bus, QAfterSortBy> sortByLongitude() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'longitude', Sort.asc);
@@ -2310,6 +2450,30 @@ extension BusQuerySortBy on QueryBuilder<Bus, Bus, QSortBy> {
     });
   }
 
+  QueryBuilder<Bus, Bus, QAfterSortBy> sortByMysqlId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'mysqlId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterSortBy> sortByMysqlIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'mysqlId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterSortBy> sortByNomLigne() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'nomLigne', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterSortBy> sortByNomLigneDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'nomLigne', Sort.desc);
+    });
+  }
+
   QueryBuilder<Bus, Bus, QAfterSortBy> sortByNotes() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'notes', Sort.asc);
@@ -2343,6 +2507,18 @@ extension BusQuerySortBy on QueryBuilder<Bus, Bus, QSortBy> {
   QueryBuilder<Bus, Bus, QAfterSortBy> sortByStatutDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'statut', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterSortBy> sortByTrajetId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'trajetId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterSortBy> sortByTrajetIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'trajetId', Sort.desc);
     });
   }
 
@@ -2456,18 +2632,6 @@ extension BusQuerySortThenBy on QueryBuilder<Bus, Bus, QSortThenBy> {
     });
   }
 
-  QueryBuilder<Bus, Bus, QAfterSortBy> thenByLigneAffectee() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'ligneAffectee', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Bus, Bus, QAfterSortBy> thenByLigneAffecteeDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'ligneAffectee', Sort.desc);
-    });
-  }
-
   QueryBuilder<Bus, Bus, QAfterSortBy> thenByLongitude() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'longitude', Sort.asc);
@@ -2516,6 +2680,30 @@ extension BusQuerySortThenBy on QueryBuilder<Bus, Bus, QSortThenBy> {
     });
   }
 
+  QueryBuilder<Bus, Bus, QAfterSortBy> thenByMysqlId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'mysqlId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterSortBy> thenByMysqlIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'mysqlId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterSortBy> thenByNomLigne() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'nomLigne', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterSortBy> thenByNomLigneDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'nomLigne', Sort.desc);
+    });
+  }
+
   QueryBuilder<Bus, Bus, QAfterSortBy> thenByNotes() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'notes', Sort.asc);
@@ -2549,6 +2737,18 @@ extension BusQuerySortThenBy on QueryBuilder<Bus, Bus, QSortThenBy> {
   QueryBuilder<Bus, Bus, QAfterSortBy> thenByStatutDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'statut', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterSortBy> thenByTrajetId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'trajetId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QAfterSortBy> thenByTrajetIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'trajetId', Sort.desc);
     });
   }
 
@@ -2610,14 +2810,6 @@ extension BusQueryWhereDistinct on QueryBuilder<Bus, Bus, QDistinct> {
     });
   }
 
-  QueryBuilder<Bus, Bus, QDistinct> distinctByLigneAffectee(
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'ligneAffectee',
-          caseSensitive: caseSensitive);
-    });
-  }
-
   QueryBuilder<Bus, Bus, QDistinct> distinctByLongitude() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'longitude');
@@ -2645,6 +2837,19 @@ extension BusQueryWhereDistinct on QueryBuilder<Bus, Bus, QDistinct> {
     });
   }
 
+  QueryBuilder<Bus, Bus, QDistinct> distinctByMysqlId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'mysqlId');
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QDistinct> distinctByNomLigne(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'nomLigne', caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<Bus, Bus, QDistinct> distinctByNotes(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -2663,6 +2868,12 @@ extension BusQueryWhereDistinct on QueryBuilder<Bus, Bus, QDistinct> {
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'statut', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Bus, Bus, QDistinct> distinctByTrajetId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'trajetId');
     });
   }
 
@@ -2722,12 +2933,6 @@ extension BusQueryProperty on QueryBuilder<Bus, Bus, QQueryProperty> {
     });
   }
 
-  QueryBuilder<Bus, String?, QQueryOperations> ligneAffecteeProperty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'ligneAffectee');
-    });
-  }
-
   QueryBuilder<Bus, double?, QQueryOperations> longitudeProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'longitude');
@@ -2752,6 +2957,18 @@ extension BusQueryProperty on QueryBuilder<Bus, Bus, QQueryProperty> {
     });
   }
 
+  QueryBuilder<Bus, int?, QQueryOperations> mysqlIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'mysqlId');
+    });
+  }
+
+  QueryBuilder<Bus, String?, QQueryOperations> nomLigneProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'nomLigne');
+    });
+  }
+
   QueryBuilder<Bus, String?, QQueryOperations> notesProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'notes');
@@ -2767,6 +2984,12 @@ extension BusQueryProperty on QueryBuilder<Bus, Bus, QQueryProperty> {
   QueryBuilder<Bus, BusStatut, QQueryOperations> statutProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'statut');
+    });
+  }
+
+  QueryBuilder<Bus, int?, QQueryOperations> trajetIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'trajetId');
     });
   }
 

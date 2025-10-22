@@ -486,8 +486,8 @@ class ApiService {
     }
   }
 
-  // Get bus by ligne affectée
-  Future<List<Map<String, dynamic>>> getBusByLigne(String ligneId) async {
+  // Get bus by trajet_id
+  Future<List<Map<String, dynamic>>> getBusByLigne(String trajetId) async {
     try {
       final mysqlDio = Dio(BaseOptions(
         baseUrl: _mysqlApiUrl,
@@ -499,7 +499,7 @@ class ApiService {
         },
       ));
 
-      final response = await mysqlDio.get('/bus/ligne/$ligneId');
+      final response = await mysqlDio.get('/bus/ligne/$trajetId');
       
       if (response.data['success'] == true && response.data['data'] != null) {
         return List<Map<String, dynamic>>.from(response.data['data']);
@@ -664,11 +664,69 @@ class ApiService {
     }
   }
 
-  /// Récupérer les informations complètes d'un bus depuis l'API MySQL
+  /// Synchroniser le bus_affecte pour tous les membres de l'équipe
+  /// 
+  /// [chauffeurMatricule] Matricule du chauffeur
+  /// [receveurMatricule] Matricule du receveur
+  /// [controleurMatricule] Matricule du contrôleur
+  /// [busNumero] Numéro du bus à affecter à tous
+  /// 
+  /// Retourne success: true si la synchronisation réussit
+  Future<Map<String, dynamic>> syncBusAffecteEquipe({
+    required String chauffeurMatricule,
+    String? receveurMatricule,
+    String? controleurMatricule,
+    required String busNumero,
+  }) async {
+    try {
+      final mysqlDio = Dio(BaseOptions(
+        baseUrl: _mysqlApiUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ));
+
+      final data = {
+        'chauffeur_matricule': chauffeurMatricule,
+        'bus_numero': busNumero,
+      };
+
+      if (receveurMatricule != null) {
+        data['receveur_matricule'] = receveurMatricule;
+      }
+      if (controleurMatricule != null) {
+        data['controleur_matricule'] = controleurMatricule;
+      }
+
+      final response = await mysqlDio.post('/equipe-bord/sync-bus', data: data);
+
+      return response.data;
+    } on DioException catch (e) {
+      print('Erreur lors de la synchronisation du bus: ${e.message}');
+      return {
+        'success': false,
+        'message': 'Erreur de connexion: ${e.message}',
+      };
+    } catch (e) {
+      print('Erreur inattendue lors de la synchronisation du bus: $e');
+      return {
+        'success': false,
+        'message': 'Erreur inattendue: $e',
+      };
+    }
+  }
+
+  /// Récupérer les informations d'un bus par son numéro
   /// 
   /// [numero] Le numéro du bus (ex: "BUS-225")
   /// 
   /// Retourne les données du bus si trouvé
+  /// 
+  /// NOTE BACKEND: L'API doit faire une jointure avec la table trajets pour retourner
+  /// le champ 'nom_ligne' ou 'trajet_nom' contenant le nom du trajet associé à trajet_id
   Future<Map<String, dynamic>> getBusInfo(String numero) async {
     try {
       final mysqlDio = Dio(BaseOptions(
@@ -753,7 +811,6 @@ class ApiService {
   /// Retourne les données du billet créé si succès
   Future<Map<String, dynamic>> createBillet({
     required String numeroBillet,
-    required String qrCode,
     required int? trajetId,
     required String? busId,
     required int? clientId,
@@ -781,7 +838,6 @@ class ApiService {
 
       final data = {
         'numero_billet': numeroBillet,
-        'qr_code': qrCode,
         'trajet_id': trajetId,
         'tarif_id': 1, // Default tarif_id
         'bus_id': busId,
@@ -826,6 +882,295 @@ class ApiService {
       return {
         'success': false,
         'message': 'Erreur inattendue: $e',
+      };
+    }
+  }
+
+  /// Récupérer les détails d'un billet par son numéro
+  /// 
+  /// [ticketNumber] Le numéro du billet (extrait du QR code)
+  /// 
+  /// Retourne toutes les informations du billet avec jointures
+  Future<Map<String, dynamic>> getTicketDetailsByQR(String ticketNumber) async {
+    try {
+      final mysqlDio = Dio(BaseOptions(
+        baseUrl: _mysqlApiUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ));
+
+      print('🔍 Récupération des détails du billet: $ticketNumber');
+      
+      Response response;
+      
+      // Essai 1: GET avec le numéro dans l'URL path
+      try {
+        print('🔍 Essai 1: GET /billets/details/$ticketNumber');
+        response = await mysqlDio.get('/billets/details/$ticketNumber');
+        print('✅ Détails récupérés avec succès (méthode 1)');
+        return response.data;
+      } catch (e) {
+        print('⚠️ Méthode 1 échouée, essai méthode 2...');
+      }
+      
+      // Essai 2: GET avec query parameter
+      try {
+        print('🔍 Essai 2: GET /billets/details?numero_billet=$ticketNumber');
+        response = await mysqlDio.get('/billets/details', queryParameters: {
+          'numero_billet': ticketNumber,
+        });
+        print('✅ Détails récupérés avec succès (méthode 2)');
+        return response.data;
+      } catch (e) {
+        print('⚠️ Méthode 2 échouée, essai méthode 3...');
+      }
+      
+      // Essai 3: GET sur /billets/{numero}
+      try {
+        print('🔍 Essai 3: GET /billets/$ticketNumber');
+        response = await mysqlDio.get('/billets/$ticketNumber');
+        print('✅ Détails récupérés avec succès (méthode 3)');
+        return response.data;
+      } catch (e) {
+        print('⚠️ Méthode 3 échouée');
+      }
+      
+      // Si toutes les méthodes GET échouent, retourner une erreur claire
+      throw DioException(
+        requestOptions: RequestOptions(path: '/billets/details'),
+        message: 'Aucune méthode de récupération des détails n\'a fonctionné',
+      );
+    } on DioException catch (e) {
+      print('❌ Erreur lors de la récupération des détails du billet: ${e.message}');
+      print('   Status Code: ${e.response?.statusCode}');
+      print('   Response Data: ${e.response?.data}');
+      
+      if (e.response?.statusCode == 404) {
+        return {
+          'success': false,
+          'message': 'Billet non trouvé',
+        };
+      }
+      
+      if (e.response?.statusCode == 400) {
+        // Récupérer le message d'erreur du backend
+        final errorMessage = e.response?.data is Map 
+            ? (e.response?.data['message'] ?? e.response?.data['error'] ?? 'Requête invalide')
+            : 'Requête invalide';
+        
+        print('   Message du backend: $errorMessage');
+        
+        return {
+          'success': false,
+          'message': errorMessage,
+        };
+      }
+      
+      return {
+        'success': false,
+        'message': 'Erreur de connexion: ${e.message}',
+      };
+    } catch (e) {
+      print('❌ Erreur inattendue lors de la récupération des détails: $e');
+      return {
+        'success': false,
+        'message': 'Erreur inattendue: $e',
+      };
+    }
+  }
+
+  /// Valider un billet par son numéro
+  /// 
+  /// [ticketNumber] Le numéro du billet (extrait du QR code)
+  /// [scannedBy] Matricule de la personne qui scanne (optionnel)
+  /// 
+  /// Retourne les données du billet si valide et met à jour le statut à 'utilise'
+  Future<Map<String, dynamic>> validateTicketByQR(String ticketNumber, {String? scannedBy}) async {
+    try {
+      final mysqlDio = Dio(BaseOptions(
+        baseUrl: _mysqlApiUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ));
+
+      print('✅ Validation du billet: $ticketNumber');
+
+      final response = await mysqlDio.post('/billets/validate', data: {
+        'numero_billet': ticketNumber,
+        'scanned_by': scannedBy,
+      });
+
+      return response.data;
+    } on DioException catch (e) {
+      print('Erreur lors de la validation du billet: ${e.message}');
+      if (e.response?.statusCode == 404) {
+        return {
+          'success': false,
+          'message': 'Billet non trouvé',
+        };
+      }
+      if (e.response?.statusCode == 400) {
+        return {
+          'success': false,
+          'message': e.response?.data['message'] ?? 'Billet déjà utilisé ou invalide',
+        };
+      }
+      return {
+        'success': false,
+        'message': 'Erreur de connexion: ${e.message}',
+      };
+    } catch (e) {
+      print('Erreur inattendue lors de la validation du billet: $e');
+      return {
+        'success': false,
+        'message': 'Erreur inattendue: $e',
+      };
+    }
+  }
+
+  /// Mettre à jour le statut d'un billet
+  /// 
+  /// [billetId] L'ID du billet
+  /// [nouveauStatut] Le nouveau statut ('utilise', 'annule', etc.)
+  /// 
+  /// Retourne success: true si la mise à jour a réussi
+  Future<Map<String, dynamic>> updateBilletStatut(int billetId, String nouveauStatut) async {
+    try {
+      final mysqlDio = Dio(BaseOptions(
+        baseUrl: _mysqlApiUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ));
+
+      final response = await mysqlDio.put('/billets/$billetId/statut', data: {
+        'statut_billet': nouveauStatut,
+      });
+
+      return response.data;
+    } on DioException catch (e) {
+      print('Erreur lors de la mise à jour du statut: ${e.message}');
+      return {
+        'success': false,
+        'message': 'Erreur de connexion: ${e.message}',
+      };
+    } catch (e) {
+      print('Erreur inattendue lors de la mise à jour du statut: $e');
+      return {
+        'success': false,
+        'message': 'Erreur inattendue: $e',
+      };
+    }
+  }
+
+  /// Récupérer les arrêts d'une ligne/trajet
+  /// 
+  /// [trajetId] L'ID du trajet/ligne
+  /// 
+  /// Retourne la liste des arrêts pour cette ligne
+  Future<Map<String, dynamic>> getArretsLigne(int trajetId) async {
+    try {
+      final mysqlDio = Dio(BaseOptions(
+        baseUrl: _mysqlApiUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ));
+
+      print('🔍 Récupération des arrêts pour la ligne $trajetId');
+
+      final response = await mysqlDio.get('/trajets/$trajetId/arrets');
+
+      if (response.data is Map && response.data['success'] == true) {
+        return response.data;
+      }
+
+      return response.data;
+    } on DioException catch (e) {
+      print('❌ Erreur lors de la récupération des arrêts: ${e.message}');
+      return {
+        'success': false,
+        'message': 'Erreur de connexion: ${e.message}',
+        'data': [],
+      };
+    } catch (e) {
+      print('❌ Erreur inattendue: $e');
+      return {
+        'success': false,
+        'message': 'Erreur inattendue: $e',
+        'data': [],
+      };
+    }
+  }
+
+  /// Récupérer les billets scannés par date et bus_id
+  /// 
+  /// [date] La date pour laquelle récupérer les billets
+  /// [busId] L'ID du bus (colonne id dans la table bus)
+  /// 
+  /// Retourne la liste des billets scannés (statut='utilise') pour cette date et ce bus
+  Future<Map<String, dynamic>> getScannedTicketsByDateAndBus({
+    required DateTime date,
+    required int busId,
+  }) async {
+    try {
+      final mysqlDio = Dio(BaseOptions(
+        baseUrl: _mysqlApiUrl,
+        connectTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 15),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ));
+
+      // Formater la date au format YYYY-MM-DD
+      final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+      print('🔍 Récupération des billets scannés pour le bus $busId à la date $dateStr');
+
+      final response = await mysqlDio.get('/billets/scanned', queryParameters: {
+        'date': dateStr,
+        'bus_id': busId,
+        'statut': 'utilise',
+      });
+
+      if (response.data is Map && response.data['success'] == true) {
+        return response.data;
+      }
+
+      return response.data;
+    } on DioException catch (e) {
+      print('❌ Erreur lors de la récupération des billets scannés: ${e.message}');
+      if (e.response != null) {
+        print('  Status code: ${e.response?.statusCode}');
+        print('  Response data: ${e.response?.data}');
+      }
+      return {
+        'success': false,
+        'message': 'Erreur de connexion: ${e.message}',
+        'data': [],
+      };
+    } catch (e) {
+      print('❌ Erreur inattendue lors de la récupération des billets scannés: $e');
+      return {
+        'success': false,
+        'message': 'Erreur inattendue: $e',
+        'data': [],
       };
     }
   }

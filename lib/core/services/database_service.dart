@@ -7,6 +7,7 @@ import '../../data/models/transaction_model.dart';
 import '../../data/models/equipe_bord_model.dart';
 import '../../data/models/driver_session_model.dart';
 import '../../data/models/bus_model.dart';
+import '../../data/models/scanned_ticket_model.dart';
 
 class DatabaseService {
   static final DatabaseService _instance = DatabaseService._internal();
@@ -30,6 +31,7 @@ class DatabaseService {
         EquipeBordSchema,
         DriverSessionSchema,
         BusSchema,
+        ScannedTicketSchema,
       ],
       directory: dir.path,
       name: 'safari_mobility',
@@ -556,6 +558,19 @@ class DatabaseService {
   // Bus operations
   Future<void> saveBus(Bus bus) async {
     await database.writeTxn(() async {
+      // Vérifier si un bus avec ce numéro existe déjà
+      final existingBus = await database.bus
+          .filter()
+          .numeroEqualTo(bus.numero)
+          .findFirst();
+      
+      if (existingBus != null) {
+        // Préserver l'ID et la date de création du bus existant
+        bus.id = existingBus.id;
+        bus.createdAt = existingBus.createdAt;
+        bus.updatedAt = DateTime.now();
+      }
+      
       await database.bus.put(bus);
     });
   }
@@ -576,6 +591,54 @@ class DatabaseService {
     return await database.bus.filter().statutEqualTo(BusStatut.actif).findAll();
   }
 
+  // Scanned Ticket operations
+  Future<void> saveScannedTicket(ScannedTicket ticket) async {
+    await database.writeTxn(() async {
+      await database.scannedTickets.put(ticket);
+    });
+  }
+
+  Future<List<ScannedTicket>> getAllScannedTickets() async {
+    return await database.scannedTickets.where().sortByScannedAtDesc().findAll();
+  }
+
+  Future<List<ScannedTicket>> getScannedTicketsByDate(DateTime date) async {
+    final startOfDay = DateTime(date.year, date.month, date.day);
+    final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
+    
+    return await database.scannedTickets
+        .filter()
+        .scannedAtBetween(startOfDay, endOfDay)
+        .sortByScannedAtDesc()
+        .findAll();
+  }
+
+  Future<List<ScannedTicket>> getTodayScannedTickets() async {
+    return await getScannedTicketsByDate(DateTime.now());
+  }
+
+  Future<ScannedTicket?> getScannedTicketByNumero(String numeroBillet) async {
+    return await database.scannedTickets
+        .filter()
+        .numeroBilletEqualTo(numeroBillet)
+        .findFirst();
+  }
+
+  Future<int> getScannedTicketsCount() async {
+    return await database.scannedTickets.count();
+  }
+
+  Future<int> getTodayScannedTicketsCount() async {
+    final tickets = await getTodayScannedTickets();
+    return tickets.length;
+  }
+
+  Future<void> deleteScannedTicket(int id) async {
+    await database.writeTxn(() async {
+      await database.scannedTickets.delete(id);
+    });
+  }
+
   // Database maintenance
   Future<void> clearAllData() async {
     await database.writeTxn(() async {
@@ -586,6 +649,7 @@ class DatabaseService {
       await database.equipeBords.clear();
       await database.driverSessions.clear();
       await database.bus.clear();
+      await database.scannedTickets.clear();
     });
   }
 

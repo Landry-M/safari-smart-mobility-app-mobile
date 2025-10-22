@@ -47,7 +47,10 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     if (_isSeatOccupied(seatCode)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Ce siège est déjà occupé'),
+          content: Text(
+            'Ce siège est déjà occupé',
+            style: TextStyle(color: AppColors.white),
+          ),
           backgroundColor: AppColors.error,
           duration: Duration(seconds: 1),
         ),
@@ -68,7 +71,10 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     if (_selectedSeat == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Veuillez sélectionner un siège'),
+          content: Text(
+            'Veuillez sélectionner un siège',
+            style: TextStyle(color: AppColors.white),
+          ),
           backgroundColor: AppColors.error,
         ),
       );
@@ -100,7 +106,10 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur lors de la sélection du siège: $e'),
+            content: Text(
+              'Erreur lors de la sélection du siège: $e',
+              style: const TextStyle(color: AppColors.white),
+            ),
             backgroundColor: AppColors.error,
           ),
         );
@@ -211,7 +220,12 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.only(
+          left: 24,
+          right: 24,
+          top: 24,
+          bottom: 24 + MediaQuery.of(context).padding.bottom,
+        ),
         decoration: const BoxDecoration(
           color: AppColors.white,
           borderRadius: BorderRadius.only(

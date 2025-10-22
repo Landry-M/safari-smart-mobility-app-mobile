@@ -56,7 +56,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         final message = widget.initialError ?? 'Code OTP non reçu. Cliquez sur "Renvoyer" pour recevoir le code.';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(message),
+            content: Text(
+              message,
+              style: const TextStyle(color: AppColors.white),
+            ),
             backgroundColor: AppColors.error,
             duration: const Duration(seconds: 5),
             action: SnackBarAction(
@@ -119,7 +122,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     if (otpCode.length != 6) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Veuillez entrer le code complet'),
+          content: Text(
+            'Veuillez entrer le code complet',
+            style: TextStyle(color: AppColors.white),
+          ),
           backgroundColor: AppColors.error,
         ),
       );
@@ -130,7 +136,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     if (_currentVerificationId == null || _currentVerificationId!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('ID de vérification manquant. Veuillez renvoyer le code.'),
+          content: Text(
+            'ID de vérification manquant. Veuillez renvoyer le code.',
+            style: TextStyle(color: AppColors.white),
+          ),
           backgroundColor: AppColors.error,
         ),
       );
@@ -161,7 +170,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 Expanded(
                   child: Text(
                     '${AppStrings.congratulations} Compte créé avec succès ! Badge "${AppStrings.firstStepBadge}" débloqué !',
-                    style: const TextStyle(fontSize: 13),
+                    style: const TextStyle(fontSize: 13, color: AppColors.white),
                   ),
                 ),
               ],
@@ -177,7 +186,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(authProvider.errorMessage ?? 'Code OTP invalide'),
+          content: Text(
+            authProvider.errorMessage ?? 'Code OTP invalide',
+            style: const TextStyle(color: AppColors.white),
+          ),
           backgroundColor: AppColors.error,
         ),
       );
@@ -201,7 +213,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
           _startResendTimer();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Code OTP renvoyé avec succès'),
+              content: Text(
+                'Code OTP renvoyé avec succès',
+                style: TextStyle(color: AppColors.white),
+              ),
               backgroundColor: AppColors.success,
             ),
           );
@@ -211,7 +226,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(error),
+              content: Text(
+                error,
+                style: const TextStyle(color: AppColors.white),
+              ),
               backgroundColor: AppColors.error,
             ),
           );

@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:safari_smart_mobility/firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_strings.dart';
 import 'core/services/database_service.dart';
 import 'providers/auth_provider.dart';
+import 'providers/equipe_bord_provider.dart';
+import 'providers/ticket_validation_provider.dart';
 import 'screens/splash/splash_screen.dart';
 import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/auth/login_screen.dart';
@@ -31,8 +34,12 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
   // Initialize database
   await DatabaseService().initialize();
+
+  // Initialize date formatting for French locale
+  await initializeDateFormatting('fr_FR', null);
 
   runApp(const MyApp());
 }
@@ -156,7 +163,8 @@ class _MyAppState extends State<MyApp> {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
-        // Add other providers here as needed
+        ChangeNotifierProvider(create: (_) => EquipeBordProvider()),
+        ChangeNotifierProvider(create: (_) => TicketValidationProvider()),
       ],
       child: MaterialApp.router(
         title: AppStrings.appName,

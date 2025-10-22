@@ -33,15 +33,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       print('🔍 [LOGIN] Numéro saisi: $phoneNumber');
-      
+
       // Vérifier d'abord si le numéro existe dans Firestore
       final userExists = await authProvider.checkPhoneExists(phoneNumber);
 
       if (!mounted) return;
 
-      print('🔍 [LOGIN] Résultat recherche: ${userExists != null ? "TROUVÉ" : "NON TROUVÉ"}');
+      print(
+          '🔍 [LOGIN] Résultat recherche: ${userExists != null ? "TROUVÉ" : "NON TROUVÉ"}');
       if (userExists != null) {
-        print('🔍 [LOGIN] Données utilisateur: ${userExists['name']}, ${userExists['phone']}');
+        print(
+            '🔍 [LOGIN] Données utilisateur: ${userExists['name']}, ${userExists['phone']}');
       }
 
       if (userExists == null) {
@@ -52,7 +54,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // Le numéro existe dans Firestore, procéder à l'envoi de l'OTP
       print('✅ [LOGIN] Numéro trouvé dans Firestore, envoi OTP...');
-      
+
       // Completer pour attendre le callback Firebase
       final completer = Completer<void>();
       String? verificationId;
@@ -105,7 +107,11 @@ class _LoginScreenState extends State<LoginScreen> {
         print('❌ [LOGIN] Pas de verificationId, affichage erreur');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorMessage ?? 'Impossible d\'envoyer le code. Vérifiez votre connexion internet.'),
+            content: Text(
+              errorMessage ??
+                  'Impossible d\'envoyer le code. Vérifiez votre connexion internet.',
+              style: const TextStyle(color: AppColors.white),
+            ),
             backgroundColor: AppColors.error,
             duration: const Duration(seconds: 5),
             action: SnackBarAction(
@@ -121,7 +127,10 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur: $e'),
+            content: Text(
+              'Erreur: $e',
+              style: const TextStyle(color: AppColors.white),
+            ),
             backgroundColor: AppColors.error,
           ),
         );
@@ -318,7 +327,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   context.push('/driver-auth');
                 },
                 child: Text(
-                  "Connexion chauffeur",
+                  "Equipe de bord",
                   style: TextStyle(
                     color: AppColors.textHint,
                     decoration: TextDecoration.underline,

@@ -239,7 +239,7 @@ CREATE TABLE `bus` (
   `annee` int(11) DEFAULT NULL,
   `capacite` int(11) DEFAULT NULL,
   `kilometrage` int(11) DEFAULT 0,
-  `ligne_affectee` varchar(100) DEFAULT '',
+  `trajet_id` int(11) DEFAULT NULL,
   `statut` enum('actif','maintenance','panne','inactif') DEFAULT 'actif',
   `modules` text DEFAULT NULL,
   `notes` text DEFAULT NULL,
@@ -253,24 +253,24 @@ CREATE TABLE `bus` (
 -- Dumping data for table `bus`
 --
 
-INSERT INTO `bus` (`id`, `numero`, `immatriculation`, `marque`, `modele`, `annee`, `capacite`, `kilometrage`, `ligne_affectee`, `statut`, `modules`, `notes`, `derniere_activite`, `latitude`, `longitude`, `date_creation`) VALUES
-(1, '421', 'KIN-1234-AB', 'Mercedes', 'Sprinter', 2022, 50, 125450, '8', 'actif', 'datcha,wifi,pos', '', '2025-10-15 18:35:52', -4.33091979, 15.27416397, '2025-10-08 17:23:37'),
-(2, '315', 'KIN-5678-CD', 'Toyota', 'Coaster', 2021, 45, 98320, '14', 'actif', 'datcha,gps', '', '2025-10-15 18:35:15', -4.36482077, 15.29580424, '2025-10-08 17:23:37'),
-(3, '208', 'KIN-9012-EF', 'Isuzu', 'NPR', 2020, 40, 156780, '8', 'maintenance', 'datcha,camera', 'Révision moteur en cours', '2025-10-15 18:35:36', -4.35491650, 15.28040478, '2025-10-08 17:23:37'),
-(4, '156', 'KIN-3456-GH', 'Mercedes', 'Sprinter', 2023, 50, 45200, '3', 'actif', 'datcha,wifi,pos,gps,camera', '', '2025-01-08 08:15:00', -4.36162660, 15.29305269, '2025-10-08 17:23:37'),
-(5, '089', 'KIN-7890-IJ', 'Toyota', 'Hiace', 2019, 35, 187650, '1', 'panne', 'datcha', 'Problème de transmission', '2025-01-06 14:20:00', -4.27825676, 15.27195812, '2025-10-08 17:23:37'),
-(6, '512', 'KIN-2468-KL', 'Hyundai', 'County', 2023, 45, 32100, '4', 'actif', 'datcha,wifi,gps', '', '2025-01-08 08:30:00', -4.33383911, 15.35733008, '2025-10-08 17:23:37'),
-(7, '238', 'KIN-1357-MN', 'Mercedes', 'Sprinter', 2021, 50, 112890, '4', 'actif', 'datcha,wifi,pos,camera', '', '2025-01-08 08:25:00', -4.34023224, 15.26924853, '2025-10-08 17:23:37'),
-(8, '310', 'KIN-9753-OP', 'Toyota', 'Coaster', 2020, 45, 143560, '4', 'actif', 'datcha,gps', '', '2025-01-08 08:20:00', -4.36146061, 15.32735135, '2025-10-08 17:23:37'),
-(9, '175', 'KIN-4682-QR', 'Isuzu', 'NPR', 2022, 40, 67890, '1', 'inactif', 'datcha', 'En attente d\'affectation', '2025-01-04 16:00:00', NULL, NULL, '2025-10-08 17:23:37'),
-(10, '642', 'KIN-8520-ST', 'Mercedes', 'Sprinter', 2024, 55, 12500, '1', 'actif', 'datcha,wifi,pos,gps,camera', 'Nouveau véhicule - Équipement complet', '2025-01-08 08:35:00', -4.30726142, 15.32403885, '2025-10-08 17:23:37'),
-(11, '012', 'KIN-7855-TT', 'Mercedes', 'Sprinter', 2015, 50, 80000, '13', 'actif', 'datcha,wifi,pos,gps,camera', 'Nouveau véhicule - Équipement complet', '2025-10-15 18:36:12', -4.28642147, 15.33817610, '2025-10-08 17:32:58'),
-(12, '001', 'AR-14452314-AZ', 'Hunda forgonette', 'GTY 147', 2018, 45, 12000, '14', 'actif', 'datcha,camera', '-', '2025-10-15 18:36:36', -4.27825509, 15.33659625, '2025-10-10 22:04:20'),
-(14, '002', 'AR-14452314-AS', 'Hunda forgonette', 'GTY 147', 2018, 45, 105000, '11', 'actif', 'gps,camera', '-', '2025-10-15 18:34:47', -4.31065347, 15.27934388, '2025-10-10 22:06:09'),
-(15, '003', 'KIN-54855-AX', 'Toyota', 'Coaster', 2021, 45, 12, '8', 'actif', 'datcha,wifi', '-', '2025-10-11 00:06:09', -4.29972017, 15.30576753, '2025-10-10 22:23:20'),
-(16, '004', 'KIN-577855-AX', 'Toyota', 'Coaster', 2021, 45, 12, '15', 'actif', 'datcha,wifi,pos,gps,camera', '-', '2025-10-15 16:47:20', -4.30040186, 15.32308814, '2025-10-10 22:25:02'),
-(17, '005', 'LSH-478961-AB', 'Mercedes', 'Sprinter', 2019, 50, 3000, '15', 'actif', 'datcha,wifi,pos,gps', 'Nouveau vehicule sans carte rose', '2025-10-15 18:34:24', -4.31175373, 15.31436694, '2025-10-10 22:40:12'),
-(18, '006', 'LSH-4774451-AB', 'Karsan', 'e-ATA', 2025, 135, 150, '7', 'panne', 'datcha,wifi,pos,gps,camera', 'Ce bus embarque jusqu\'à 449 kWh d\'énergie dans des batteries lithium-fer-phosphate (LFP). L\'autonomie annoncée est de 450 km (rechargement complet en 3h10).', '2025-10-15 18:34:02', -4.32130409, 15.29277870, '2025-10-10 23:12:15');
+INSERT INTO `bus` (`id`, `numero`, `immatriculation`, `marque`, `modele`, `annee`, `capacite`, `kilometrage`, `trajet_id`, `statut`, `modules`, `notes`, `derniere_activite`, `latitude`, `longitude`, `date_creation`) VALUES
+(1, '421', 'KIN-1234-AB', 'Mercedes', 'Sprinter', 2022, 50, 125450, 8, 'actif', 'datcha,wifi,pos', '', '2025-10-15 18:35:52', -4.33091979, 15.27416397, '2025-10-08 17:23:37'),
+(2, '315', 'KIN-5678-CD', 'Toyota', 'Coaster', 2021, 45, 98320, 14, 'actif', 'datcha,gps', '', '2025-10-15 18:35:15', -4.36482077, 15.29580424, '2025-10-08 17:23:37'),
+(3, '208', 'KIN-9012-EF', 'Isuzu', 'NPR', 2020, 40, 156780, 8, 'maintenance', 'datcha,camera', 'Révision moteur en cours', '2025-10-15 18:35:36', -4.35491650, 15.28040478, '2025-10-08 17:23:37'),
+(4, '156', 'KIN-3456-GH', 'Mercedes', 'Sprinter', 2023, 50, 45200, 3, 'actif', 'datcha,wifi,pos,gps,camera', '', '2025-01-08 08:15:00', -4.36162660, 15.29305269, '2025-10-08 17:23:37'),
+(5, '089', 'KIN-7890-IJ', 'Toyota', 'Hiace', 2019, 35, 187650, 1, 'panne', 'datcha', 'Problème de transmission', '2025-01-06 14:20:00', -4.27825676, 15.27195812, '2025-10-08 17:23:37'),
+(6, '512', 'KIN-2468-KL', 'Hyundai', 'County', 2023, 45, 32100, 4, 'actif', 'datcha,wifi,gps', '', '2025-01-08 08:30:00', -4.33383911, 15.35733008, '2025-10-08 17:23:37'),
+(7, '238', 'KIN-1357-MN', 'Mercedes', 'Sprinter', 2021, 50, 112890, 4, 'actif', 'datcha,wifi,pos,camera', '', '2025-01-08 08:25:00', -4.34023224, 15.26924853, '2025-10-08 17:23:37'),
+(8, '310', 'KIN-9753-OP', 'Toyota', 'Coaster', 2020, 45, 143560, 4, 'actif', 'datcha,gps', '', '2025-01-08 08:20:00', -4.36146061, 15.32735135, '2025-10-08 17:23:37'),
+(9, '175', 'KIN-4682-QR', 'Isuzu', 'NPR', 2022, 40, 67890, 1, 'inactif', 'datcha', 'En attente d\'affectation', '2025-01-04 16:00:00', NULL, NULL, '2025-10-08 17:23:37'),
+(10, '642', 'KIN-8520-ST', 'Mercedes', 'Sprinter', 2024, 55, 12500, 1, 'actif', 'datcha,wifi,pos,gps,camera', 'Nouveau véhicule - Équipement complet', '2025-01-08 08:35:00', -4.30726142, 15.32403885, '2025-10-08 17:23:37'),
+(11, '012', 'KIN-7855-TT', 'Mercedes', 'Sprinter', 2015, 50, 80000, 13, 'actif', 'datcha,wifi,pos,gps,camera', 'Nouveau véhicule - Équipement complet', '2025-10-15 18:36:12', -4.28642147, 15.33817610, '2025-10-08 17:32:58'),
+(12, '001', 'AR-14452314-AZ', 'Hunda forgonette', 'GTY 147', 2018, 45, 12000, 14, 'actif', 'datcha,camera', '-', '2025-10-15 18:36:36', -4.27825509, 15.33659625, '2025-10-10 22:04:20'),
+(14, '002', 'AR-14452314-AS', 'Hunda forgonette', 'GTY 147', 2018, 45, 105000, 11, 'actif', 'gps,camera', '-', '2025-10-15 18:34:47', -4.31065347, 15.27934388, '2025-10-10 22:06:09'),
+(15, '003', 'KIN-54855-AX', 'Toyota', 'Coaster', 2021, 45, 12, 8, 'actif', 'datcha,wifi', '-', '2025-10-11 00:06:09', -4.29972017, 15.30576753, '2025-10-10 22:23:20'),
+(16, '004', 'KIN-577855-AX', 'Toyota', 'Coaster', 2021, 45, 12, 15, 'actif', 'datcha,wifi,pos,gps,camera', '-', '2025-10-15 16:47:20', -4.30040186, 15.32308814, '2025-10-10 22:25:02'),
+(17, '005', 'LSH-478961-AB', 'Mercedes', 'Sprinter', 2019, 50, 3000, 15, 'actif', 'datcha,wifi,pos,gps', 'Nouveau vehicule sans carte rose', '2025-10-15 18:34:24', -4.31175373, 15.31436694, '2025-10-10 22:40:12'),
+(18, '006', 'LSH-4774451-AB', 'Karsan', 'e-ATA', 2025, 135, 150, 7, 'panne', 'datcha,wifi,pos,gps,camera', 'Ce bus embarque jusqu\'à 449 kWh d\'énergie dans des batteries lithium-fer-phosphate (LFP). L\'autonomie annoncée est de 450 km (rechargement complet en 3h10).', '2025-10-15 18:34:02', -4.32130409, 15.29277870, '2025-10-10 23:12:15');
 
 -- --------------------------------------------------------
 

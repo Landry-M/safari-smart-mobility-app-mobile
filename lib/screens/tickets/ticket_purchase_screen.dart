@@ -813,7 +813,6 @@ class _TicketPurchaseScreenState extends State<TicketPurchaseScreen> {
         
         print('🔵 Données du billet à insérer:');
         print('  - numeroBillet: $ticketNumber');
-        print('  - qrCode: $qrCode');
         print('  - trajetId: $trajetId');
         print('  - clientId: $clientId');
         print('  - arretDepart: ${origin ?? "Non défini"}');
@@ -828,7 +827,6 @@ class _TicketPurchaseScreenState extends State<TicketPurchaseScreen> {
         print('🔵 Étape 4: Appel API createBillet()...');
         final billetResponse = await _apiService.createBillet(
           numeroBillet: ticketNumber,
-          qrCode: qrCode,
           trajetId: trajetId,
           busId: null, // Pas de bus_id pour achat depuis écran principal
           clientId: clientId,
@@ -903,7 +901,10 @@ class _TicketPurchaseScreenState extends State<TicketPurchaseScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur lors de l\'achat: $e'),
+            content: Text(
+              'Erreur lors de l\'achat: $e',
+              style: const TextStyle(color: AppColors.white),
+            ),
             backgroundColor: AppColors.error,
           ),
         );

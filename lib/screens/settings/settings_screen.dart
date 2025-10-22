@@ -91,7 +91,10 @@ class SettingsScreen extends StatelessWidget {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Localisation activée avec succès'),
+                                content: Text(
+                                  'Localisation activée avec succès',
+                                  style: TextStyle(color: AppColors.white),
+                                ),
                                 backgroundColor: AppColors.success,
                                 duration: Duration(seconds: 2),
                               ),
@@ -102,7 +105,10 @@ class SettingsScreen extends StatelessWidget {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Permission de localisation refusée'),
+                                content: Text(
+                                  'Permission de localisation refusée',
+                                  style: TextStyle(color: AppColors.white),
+                                ),
                                 backgroundColor: AppColors.error,
                                 duration: Duration(seconds: 3),
                               ),

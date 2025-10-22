@@ -9,13 +9,16 @@ class Bus {
   @Index(unique: true)
   late String numero;
   
+  late int? mysqlId; // ID du bus dans la base MySQL
+  
   late String immatriculation;
   late String? marque;
   late String? modele;
   late int? annee;
   late int? capacite;
   late int? kilometrage;
-  late String? ligneAffectee;
+  late int? trajetId; // ID du trajet dans la table trajets
+  late String? nomLigne; // Nom du trajet récupéré depuis la table trajets
   
   @Enumerated(EnumType.name)
   late BusStatut statut;
@@ -32,12 +35,14 @@ class Bus {
   Bus({
     this.numero = '',
     this.immatriculation = '',
+    this.mysqlId,
     this.marque,
     this.modele,
     this.annee,
     this.capacite,
     this.kilometrage,
-    this.ligneAffectee,
+    this.trajetId,
+    this.nomLigne,
     this.statut = BusStatut.actif,
     this.modules,
     this.notes,
@@ -51,12 +56,14 @@ class Bus {
   Bus copyWith({
     String? numero,
     String? immatriculation,
+    int? mysqlId,
     String? marque,
     String? modele,
     int? annee,
     int? capacite,
     int? kilometrage,
-    String? ligneAffectee,
+    int? trajetId,
+    String? nomLigne,
     BusStatut? statut,
     String? modules,
     String? notes,
@@ -67,12 +74,14 @@ class Bus {
     final copy = Bus(
       numero: numero ?? this.numero,
       immatriculation: immatriculation ?? this.immatriculation,
+      mysqlId: mysqlId ?? this.mysqlId,
       marque: marque ?? this.marque,
       modele: modele ?? this.modele,
       annee: annee ?? this.annee,
       capacite: capacite ?? this.capacite,
       kilometrage: kilometrage ?? this.kilometrage,
-      ligneAffectee: ligneAffectee ?? this.ligneAffectee,
+      trajetId: trajetId ?? this.trajetId,
+      nomLigne: nomLigne ?? this.nomLigne,
       statut: statut ?? this.statut,
       modules: modules ?? this.modules,
       notes: notes ?? this.notes,
@@ -92,12 +101,14 @@ class Bus {
     final bus = Bus(
       numero: json['numero'] ?? '',
       immatriculation: json['immatriculation'] ?? '',
+      mysqlId: json['id'] != null ? int.tryParse(json['id'].toString()) : null,
       marque: json['marque'],
       modele: json['modele'],
       annee: json['annee'] != null ? int.tryParse(json['annee'].toString()) : null,
       capacite: json['capacite'] != null ? int.tryParse(json['capacite'].toString()) : null,
       kilometrage: json['kilometrage'] != null ? int.tryParse(json['kilometrage'].toString()) : null,
-      ligneAffectee: json['ligne_affectee'],
+      trajetId: json['trajet_id'] != null ? int.tryParse(json['trajet_id'].toString()) : null,
+      nomLigne: json['nom_ligne'] ?? json['trajet_nom'],
       statut: _parseStatut(json['statut']),
       modules: json['modules'],
       notes: json['notes'],
@@ -139,6 +150,7 @@ class Bus {
   // Convertir en JSON
   Map<String, dynamic> toJson() {
     return {
+      'id': mysqlId,
       'numero': numero,
       'immatriculation': immatriculation,
       'marque': marque,
@@ -146,7 +158,8 @@ class Bus {
       'annee': annee,
       'capacite': capacite,
       'kilometrage': kilometrage,
-      'ligne_affectee': ligneAffectee,
+      'trajet_id': trajetId,
+      'nom_ligne': nomLigne,
       'statut': statut.name,
       'modules': modules,
       'notes': notes,
@@ -155,6 +168,15 @@ class Bus {
       'longitude': longitude,
       'date_creation': createdAt.toIso8601String(),
     };
+  }
+
+  // Méthode toString pour faciliter le débogage
+  @override
+  String toString() {
+    return 'Bus(numero: $numero, immatriculation: $immatriculation, '
+           'marque: $marque, modele: $modele, capacite: $capacite, '
+           'trajetId: $trajetId, nomLigne: $nomLigne, '
+           'statut: ${statut.name})';
   }
 }
 
