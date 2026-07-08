@@ -62,7 +62,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
   Future<void> _loadScannedBy() async {
     try {
       final provider = Provider.of<EquipeBordProvider>(context, listen: false);
-      
+
       // Priorité: receveur > contrôleur > chauffeur
       if (provider.receveur != null) {
         _scannedBy = provider.receveur!.matricule;
@@ -235,6 +235,21 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
       body: Consumer<AuthProvider>(
         builder: (context, authProvider, child) {
           final user = authProvider.currentUser;
+          final equipeProvider = Provider.of<EquipeBordProvider>(context);
+
+          String? scannerMatricule;
+          String? scannerRoleLabel;
+
+          if (equipeProvider.receveur != null) {
+            scannerMatricule = equipeProvider.receveur!.matricule;
+            scannerRoleLabel = 'Receveur';
+          } else if (equipeProvider.controleur != null) {
+            scannerMatricule = equipeProvider.controleur!.matricule;
+            scannerRoleLabel = 'Contrôleur';
+          } else if (equipeProvider.chauffeur != null) {
+            scannerMatricule = equipeProvider.chauffeur!.matricule;
+            scannerRoleLabel = 'Chauffeur';
+          }
 
           return Stack(
             children: [
@@ -280,6 +295,38 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                                 style: TextStyle(
                                   color: AppColors.white,
                                   fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+
+                        if (scannerMatricule != null) ...[
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color:
+                                      AppColors.primaryPurple.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.person,
+                                  color: AppColors.primaryOrange,
+                                  size: 18,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Scanné par: $scannerRoleLabel • $scannerMatricule',
+                                  style: const TextStyle(
+                                    color: AppColors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
                             ],

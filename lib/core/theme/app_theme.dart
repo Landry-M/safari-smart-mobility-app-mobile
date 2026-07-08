@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../constants/app_colors.dart';
+
 class AppTheme {
   static ThemeData get lightTheme {
     return ThemeData(
@@ -14,7 +15,7 @@ class AppTheme {
         background: AppColors.background,
         error: AppColors.error,
       ),
-      
+
       // AppBar Theme
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.primaryPurple,
@@ -28,7 +29,7 @@ class AppTheme {
           color: AppColors.white,
         ),
       ),
-      
+
       // Elevated Button Theme
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -45,7 +46,7 @@ class AppTheme {
           ),
         ),
       ),
-      
+
       // Outlined Button Theme
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
@@ -61,7 +62,7 @@ class AppTheme {
           ),
         ),
       ),
-      
+
       // Text Button Theme
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
@@ -73,9 +74,9 @@ class AppTheme {
           ),
         ),
       ),
-      
+
       // Card Theme
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: AppColors.cardBackground,
         elevation: 2,
         shape: RoundedRectangleBorder(
@@ -83,7 +84,7 @@ class AppTheme {
         ),
         margin: const EdgeInsets.all(8),
       ),
-      
+
       // Input Decoration Theme
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -98,13 +99,15 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2),
+          borderSide:
+              const BorderSide(color: AppColors.primaryPurple, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.error, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         hintStyle: const TextStyle(
           color: AppColors.textHint,
           fontSize: 14,
@@ -114,7 +117,7 @@ class AppTheme {
           fontSize: 14,
         ),
       ),
-      
+
       // Bottom Navigation Bar Theme
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: AppColors.white,
@@ -131,7 +134,7 @@ class AppTheme {
           fontWeight: FontWeight.w400,
         ),
       ),
-      
+
       // Floating Action Button Theme
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
         backgroundColor: AppColors.primaryOrange,
@@ -139,7 +142,7 @@ class AppTheme {
         elevation: 4,
         shape: CircleBorder(),
       ),
-      
+
       // Chip Theme
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.lightGrey,
@@ -157,21 +160,21 @@ class AppTheme {
           borderRadius: BorderRadius.circular(20),
         ),
       ),
-      
+
       // Progress Indicator Theme
       progressIndicatorTheme: const ProgressIndicatorThemeData(
         color: AppColors.primaryPurple,
         linearTrackColor: AppColors.lightGrey,
         circularTrackColor: AppColors.lightGrey,
       ),
-      
+
       // Divider Theme
       dividerTheme: const DividerThemeData(
         color: AppColors.lightGrey,
         thickness: 1,
         space: 1,
       ),
-      
+
       // Text Theme
       textTheme: const TextTheme(
         displayLarge: TextStyle(
@@ -252,7 +255,7 @@ class AppTheme {
       ),
     );
   }
-  
+
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
@@ -264,7 +267,7 @@ class AppTheme {
         background: AppColors.darkBackground,
         error: AppColors.error,
       ),
-      
+
       // Utiliser les mêmes configurations que le thème clair
       // mais avec des couleurs adaptées au mode sombre
       appBarTheme: const AppBarTheme(
@@ -273,15 +276,15 @@ class AppTheme {
         elevation: 0,
         centerTitle: true,
       ),
-      
-      cardTheme: CardTheme(
+
+      cardTheme: CardThemeData(
         color: AppColors.darkSurface,
         elevation: 4,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
       ),
-      
+
       textTheme: const TextTheme(
         bodyLarge: TextStyle(color: AppColors.darkTextPrimary),
         bodyMedium: TextStyle(color: AppColors.darkTextPrimary),

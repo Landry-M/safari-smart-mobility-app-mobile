@@ -20,7 +20,10 @@ class AuthDriverScreen extends StatefulWidget {
 
 class _AuthDriverScreenState extends State<AuthDriverScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _controllerFormKey = GlobalKey<FormState>();
   int _currentStep = 0;
+
+  String _selectedRole = 'chauffeur';
 
   // Contrôleurs pour chaque étape
   final _chauffeurMatriculeController = TextEditingController();
@@ -39,6 +42,27 @@ class _AuthDriverScreenState extends State<AuthDriverScreen> {
   Map<String, dynamic>? _controleurData;
 
   bool _isLoading = false;
+
+  final List<Map<String, String>> _roles = [
+    {'label': 'Chauffeur', 'value': 'chauffeur'},
+    {'label': 'Contrôleur', 'value': 'controleur'},
+    {'label': 'Régulateur de réseau', 'value': 'regulateur_reseau'},
+    {'label': 'Régulateur de lancement', 'value': 'regulateur_lancement'},
+  ];
+
+  String _getApiPosteForSelectedRole() {
+    switch (_selectedRole) {
+      case 'chauffeur':
+        return 'chauffeur';
+      case 'controleur':
+        return 'controleur';
+      case 'regulateur_reseau':
+      case 'regulateur_lancement':
+        return 'controleur';
+      default:
+        return _selectedRole;
+    }
+  }
 
   @override
   void dispose() {
@@ -72,11 +96,6 @@ class _AuthDriverScreenState extends State<AuthDriverScreen> {
         pin = _receveurPinController.text.trim();
         poste = 'receveur';
         break;
-      case 2:
-        matricule = _controleurMatriculeController.text.trim();
-        pin = _controleurPinController.text.trim();
-        poste = 'controleur';
-        break;
     }
 
     try {
@@ -97,7 +116,7 @@ class _AuthDriverScreenState extends State<AuthDriverScreen> {
         if (_currentStep > 0) {
           final chauffeurBus = _chauffeurData?['bus_affecte'];
           final membreBus = memberData['bus_affecte'];
-          final posteNom = _currentStep == 1 ? 'receveur' : 'contrôleur';
+          final posteNom = 'receveur';
 
           // Si les bus ne correspondent pas, afficher une erreur
           if (chauffeurBus != null &&
@@ -165,13 +184,10 @@ class _AuthDriverScreenState extends State<AuthDriverScreen> {
           case 1:
             _receveurData = memberData;
             break;
-          case 2:
-            _controleurData = memberData;
-            break;
         }
 
         // Si c'est la dernière étape, synchroniser le bus et sauvegarder en local
-        if (_currentStep == 2) {
+        if (_currentStep == 1) {
           // Synchroniser le bus_affecte pour tous les membres de l'équipe
           await _syncBusAffecteForTeam();
 
@@ -186,6 +202,112 @@ class _AuthDriverScreenState extends State<AuthDriverScreen> {
             _currentStep++;
             _formKey.currentState!.reset();
           });
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                result['message'] ?? 'Identifiants incorrects',
+                style: const TextStyle(color: AppColors.white),
+              ),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Erreur de connexion: $e',
+              style: const TextStyle(color: AppColors.white),
+            ),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleControllerLogin() async {
+    if (!_controllerFormKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    final matricule = _controleurMatriculeController.text.trim();
+    final pin = _controleurPinController.text.trim();
+    final poste = _getApiPosteForSelectedRole();
+
+    try {
+      final result = await _apiService.authenticateEquipeBord(
+        matricule: matricule,
+        pin: pin,
+        poste: poste,
+      );
+
+      setState(() => _isLoading = false);
+
+      if (result['success'] == true) {
+        final memberData = result['data'];
+        _controleurData = memberData;
+
+        final membre = EquipeBord.fromApi(memberData)
+          ..isCurrentSession = true
+          ..loginTimestamp = DateTime.now();
+
+        String? busNumber = memberData['bus_affecte'];
+
+        if (busNumber != null && busNumber.isNotEmpty) {
+          try {
+            final busResult = await _apiService.getBusInfo(busNumber);
+            if (busResult['success'] == true && busResult['data'] != null) {
+              final bus = Bus.fromApi(busResult['data']);
+              await _dbService.saveBus(bus);
+            }
+          } catch (e) {
+            print(
+                '❌ Erreur lors de la récupération du bus (connexion rôle unique): $e');
+          }
+        }
+
+        final driverSession = DriverSession(
+          chauffeurMatricule: '',
+          receveurMatricule: '',
+          controleurMatricule: matricule,
+          busNumber: busNumber,
+          route: null,
+          isActive: true,
+        );
+
+        await _dbService.saveCompleteDriverSession(
+          chauffeur: null,
+          receveur: null,
+          controleur: membre,
+          session: driverSession,
+        );
+
+        final sessionService = DriverSessionService();
+        await sessionService.saveDriverSession(
+          chauffeurMatricule: '',
+          receveurMatricule: '',
+          collecteurMatricule: matricule,
+          busNumber: busNumber ?? 'BUS-225',
+        );
+
+        if (mounted) {
+          String targetRoute = '/controller-home';
+          if (_selectedRole == 'regulateur_reseau') {
+            targetRoute = '/network-regulator-home';
+          } else if (_selectedRole == 'regulateur_lancement') {
+            targetRoute = '/launch-regulator-home';
+          }
+          context.go(targetRoute);
         }
       } else {
         if (mounted) {
@@ -275,7 +397,6 @@ class _AuthDriverScreenState extends State<AuthDriverScreen> {
       // Préparer les membres de l'équipe
       EquipeBord? chauffeur;
       EquipeBord? receveur;
-      EquipeBord? controleur;
 
       if (_chauffeurData != null) {
         chauffeur = EquipeBord.fromApi(_chauffeurData!)
@@ -285,12 +406,6 @@ class _AuthDriverScreenState extends State<AuthDriverScreen> {
 
       if (_receveurData != null) {
         receveur = EquipeBord.fromApi(_receveurData!)
-          ..isCurrentSession = true
-          ..loginTimestamp = DateTime.now();
-      }
-
-      if (_controleurData != null) {
-        controleur = EquipeBord.fromApi(_controleurData!)
           ..isCurrentSession = true
           ..loginTimestamp = DateTime.now();
       }
@@ -333,7 +448,7 @@ class _AuthDriverScreenState extends State<AuthDriverScreen> {
       final driverSession = DriverSession(
         chauffeurMatricule: _chauffeurMatriculeController.text.trim(),
         receveurMatricule: _receveurMatriculeController.text.trim(),
-        controleurMatricule: _controleurMatriculeController.text.trim(),
+        controleurMatricule: '',
         busNumber: busNumber,
         route: null,
         isActive: true,
@@ -343,21 +458,20 @@ class _AuthDriverScreenState extends State<AuthDriverScreen> {
       await _dbService.saveCompleteDriverSession(
         chauffeur: chauffeur,
         receveur: receveur,
-        controleur: controleur,
+        controleur: null,
         session: driverSession,
       );
 
       print('✅ Session complète sauvegardée avec succès');
       if (chauffeur != null) print('  - Chauffeur: ${chauffeur.nom}');
       if (receveur != null) print('  - Receveur: ${receveur.nom}');
-      if (controleur != null) print('  - Contrôleur: ${controleur.nom}');
 
       // 4. Sauvegarder aussi dans SharedPreferences (pour compatibilité)
       final sessionService = DriverSessionService();
       await sessionService.saveDriverSession(
         chauffeurMatricule: _chauffeurMatriculeController.text.trim(),
         receveurMatricule: _receveurMatriculeController.text.trim(),
-        collecteurMatricule: _controleurMatriculeController.text.trim(),
+        collecteurMatricule: '',
         busNumber: _chauffeurData?['bus_affecte'] ?? 'BUS-225',
       );
       print('✅ Session sauvegardée dans SharedPreferences');
@@ -382,13 +496,6 @@ class _AuthDriverScreenState extends State<AuthDriverScreen> {
         'matriculeController': _receveurMatriculeController,
         'pinController': _receveurPinController,
         'matriculeHint': 'Ex: EMP-2025-008',
-      },
-      {
-        'title': 'Authentification Contrôleur',
-        'icon': Icons.badge_outlined,
-        'matriculeController': _controleurMatriculeController,
-        'pinController': _controleurPinController,
-        'matriculeHint': 'Ex: EMP-2025-015',
       },
     ];
 
@@ -423,7 +530,7 @@ class _AuthDriverScreenState extends State<AuthDriverScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Étape ${_currentStep + 1} sur 3',
+                'Étape ${_currentStep + 1} sur 2',
                 style: TextStyle(
                   fontSize: 14,
                   color: AppColors.textSecondary,
@@ -485,7 +592,7 @@ class _AuthDriverScreenState extends State<AuthDriverScreen> {
 
         // Bouton de validation
         CustomButton(
-          text: _currentStep == 2 ? 'Terminer' : 'Suivant',
+          text: _currentStep == 1 ? 'Terminer' : 'Suivant',
           onPressed: _isLoading ? null : _validateStep,
           isLoading: _isLoading,
         ),
@@ -513,6 +620,101 @@ class _AuthDriverScreenState extends State<AuthDriverScreen> {
     );
   }
 
+  Widget _buildControllerOnlyContent() {
+    final roleConfig = _roles.firstWhere(
+      (r) => r['value'] == _selectedRole,
+      orElse: () => _roles.first,
+    );
+    final roleLabel = roleConfig['label'] ?? 'Membre de l\'équipe';
+
+    return Form(
+      key: _controllerFormKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.primaryPurple.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              children: [
+                const Icon(
+                  Icons.badge_outlined,
+                  size: 64,
+                  color: AppColors.primaryPurple,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Connexion $roleLabel',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Entrez votre matricule et votre code PIN pour vous connecter en tant que $roleLabel.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+          CustomTextField(
+            controller: _controleurMatriculeController,
+            label: 'Matricule',
+            hintText: 'Ex: EMP-2025-015',
+            prefixIcon: Icons.badge,
+            keyboardType: TextInputType.text,
+            textCapitalization: TextCapitalization.characters,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Veuillez entrer le matricule';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          CustomTextField(
+            controller: _controleurPinController,
+            label: 'Code PIN',
+            hintText: '6 chiffres',
+            prefixIcon: Icons.lock_outline,
+            obscureText: false,
+            keyboardType: TextInputType.number,
+            maxLength: 6,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+            ],
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Veuillez entrer le code PIN';
+              }
+              if (value.length != 6) {
+                return 'Le code PIN doit contenir 6 chiffres';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 32),
+          CustomButton(
+            text: 'Se connecter',
+            onPressed: _isLoading ? null : _handleControllerLogin,
+            isLoading: _isLoading,
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -537,31 +739,83 @@ class _AuthDriverScreenState extends State<AuthDriverScreen> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Indicateur de progression
-              Row(
-                children: List.generate(3, (index) {
-                  return Expanded(
-                    child: Container(
-                      margin: EdgeInsets.only(
-                        right: index < 2 ? 8 : 0,
-                      ),
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: index <= _currentStep
-                            ? AppColors.primaryPurple
-                            : AppColors.primaryPurple.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  );
-                }),
+              Text(
+                'Sélectionnez votre poste',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
               ),
-
-              const SizedBox(height: 32),
-
-              // Contenu de l'étape
-              _buildStepContent(),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppColors.primaryPurple.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _selectedRole,
+                    isExpanded: true,
+                    items: _roles
+                        .map(
+                          (role) => DropdownMenuItem<String>(
+                            value: role['value'],
+                            child: Text(role['label'] ?? ''),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() {
+                        _selectedRole = value;
+                        _currentStep = 0;
+                        _formKey.currentState?.reset();
+                        _controllerFormKey.currentState?.reset();
+                        _chauffeurMatriculeController.clear();
+                        _chauffeurPinController.clear();
+                        _receveurMatriculeController.clear();
+                        _receveurPinController.clear();
+                        _controleurMatriculeController.clear();
+                        _controleurPinController.clear();
+                      });
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              if (_selectedRole == 'chauffeur') ...[
+                Row(
+                  children: List.generate(2, (index) {
+                    return Expanded(
+                      child: Container(
+                        margin: EdgeInsets.only(
+                          right: index < 1 ? 8 : 0,
+                        ),
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: index <= _currentStep
+                              ? AppColors.primaryPurple
+                              : AppColors.primaryPurple.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 32),
+                _buildStepContent(),
+              ] else ...[
+                const SizedBox(height: 16),
+                _buildControllerOnlyContent(),
+              ],
             ],
           ),
         ),

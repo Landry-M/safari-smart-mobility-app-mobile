@@ -80,6 +80,8 @@ dependencies:
   # UI Components
   cached_network_image: ^3.3.1
   shimmer: ^3.0.0
+  amplify_flutter: ^2.6.1
+  amplify_auth_cognito: ^2.6.1
 
 package_rename_config:
   android:

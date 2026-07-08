@@ -21,7 +21,8 @@ class HomeDriverScreen extends StatefulWidget {
   State<HomeDriverScreen> createState() => _HomeDriverScreenState();
 }
 
-class _HomeDriverScreenState extends State<HomeDriverScreen> with WidgetsBindingObserver {
+class _HomeDriverScreenState extends State<HomeDriverScreen>
+    with WidgetsBindingObserver {
   int _currentIndex = 0;
   final _sessionService = DriverSessionService();
   final _dbService = DatabaseService();
@@ -2183,6 +2184,13 @@ class _HomeDriverScreenState extends State<HomeDriverScreen> with WidgetsBinding
   }
 
   Widget _buildTeamTab() {
+    final bool hasChauffeur = _chauffeur != null;
+    final bool hasReceveur = _receveur != null;
+    final bool hasControleur = _controleur != null;
+
+    final bool isControllerOnly =
+        !hasChauffeur && !hasReceveur && hasControleur;
+
     return RefreshIndicator(
       onRefresh: _refreshBusData,
       color: AppColors.primaryPurple,
@@ -2192,35 +2200,46 @@ class _HomeDriverScreenState extends State<HomeDriverScreen> with WidgetsBinding
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Équipe connectée',
-              style: TextStyle(
+            Text(
+              isControllerOnly ? 'Contrôleur connecté' : 'Équipe connectée',
+              style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textPrimary,
               ),
             ),
             const SizedBox(height: 16),
-            _buildTeamMemberCard(
-              role: 'Chauffeur',
-              matricule: _teamInfo['chauffeur']!,
-              icon: Icons.person,
-              membre: _chauffeur,
-            ),
-            const SizedBox(height: 12),
-            _buildTeamMemberCard(
-              role: 'Receveur',
-              matricule: _teamInfo['receveur']!,
-              icon: Icons.account_circle,
-              membre: _receveur,
-            ),
-            const SizedBox(height: 12),
-            _buildTeamMemberCard(
-              role: 'Contrôleur',
-              matricule: _teamInfo['collecteur']!,
-              icon: Icons.badge,
-              membre: _controleur,
-            ),
+            if (isControllerOnly) ...[
+              _buildTeamMemberCard(
+                role: 'Contrôleur',
+                matricule: _teamInfo['collecteur']!,
+                icon: Icons.badge,
+                membre: _controleur,
+              ),
+            ] else ...[
+              _buildTeamMemberCard(
+                role: 'Chauffeur',
+                matricule: _teamInfo['chauffeur']!,
+                icon: Icons.person,
+                membre: _chauffeur,
+              ),
+              const SizedBox(height: 12),
+              _buildTeamMemberCard(
+                role: 'Receveur',
+                matricule: _teamInfo['receveur']!,
+                icon: Icons.account_circle,
+                membre: _receveur,
+              ),
+              if (hasControleur) ...[
+                const SizedBox(height: 12),
+                _buildTeamMemberCard(
+                  role: 'Contrôleur',
+                  matricule: _teamInfo['collecteur']!,
+                  icon: Icons.badge,
+                  membre: _controleur,
+                ),
+              ],
+            ],
             const SizedBox(height: 24),
 
             // Card du Bus
@@ -2296,8 +2315,10 @@ class _HomeDriverScreenState extends State<HomeDriverScreen> with WidgetsBinding
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'L\'équipe complète est connectée et prête à travailler.',
-                      style: TextStyle(
+                      isControllerOnly
+                          ? 'Session contrôleur seule active pour le contrôle des billets.'
+                          : 'L\'équipe complète est connectée et prête à travailler.',
+                      style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 14,
                       ),

@@ -25,6 +25,9 @@ import 'screens/scanner/qr_scanner_screen.dart';
 import 'screens/map/nearby_buses_screen.dart';
 import 'screens/driver/auth_driver_screen.dart';
 import 'screens/driver/home_driver_screen.dart';
+import 'screens/driver/controller_home_screen.dart';
+import 'screens/driver/network_regulator_home_screen.dart';
+import 'screens/driver/launch_regulator_home_screen.dart';
 import 'screens/tickets/seat_selection_screen.dart';
 
 void main() async {
@@ -140,6 +143,18 @@ class _MyAppState extends State<MyApp> {
         GoRoute(
           path: '/driver-home',
           builder: (context, state) => const HomeDriverScreen(),
+        ),
+        GoRoute(
+          path: '/controller-home',
+          builder: (context, state) => const ControllerHomeScreen(),
+        ),
+        GoRoute(
+          path: '/network-regulator-home',
+          builder: (context, state) => const NetworkRegulatorHomeScreen(),
+        ),
+        GoRoute(
+          path: '/launch-regulator-home',
+          builder: (context, state) => const LaunchRegulatorHomeScreen(),
         ),
         GoRoute(
           path: '/seat-selection',

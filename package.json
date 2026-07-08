@@ -1,0 +1,33 @@
+{
+  "name": "safari_smart_mobility",
+  "version": "1.0.0",
+  "description": "Application mobile Flutter pour la gestion intelligente des transports en commun Safari.",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Landry-M/safari-smart-mobility-app-mobile.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Landry-M/safari-smart-mobility-app-mobile/issues"
+  },
+  "homepage": "https://github.com/Landry-M/safari-smart-mobility-app-mobile#readme",
+  "devDependencies": {
+    "@aws-amplify/backend": "^1.17.0",
+    "@aws-amplify/backend-cli": "^1.8.0",
+    "aws-cdk-lib": "^2.216.0",
+    "constructs": "^10.4.2",
+    "esbuild": "^0.25.12",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}
